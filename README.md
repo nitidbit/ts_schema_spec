@@ -47,8 +47,13 @@ and how to write it. Claude Code reads skills from the working tree, so it has
 to be copied in and committed:
 
 ```
-bundle exec rake ts_schema_spec:install_skill
+RAILS_ENV=test bundle exec rake ts_schema_spec:install_skill
 ```
+
+`RAILS_ENV=test` is required when the gem is in `group: :test`, as above —
+rake tasks come from the railtie, which only loads in an environment that
+loads the gem, so the task simply does not exist in development. Add the gem
+to `group :development, :test` if you would rather type less.
 
 It lands in `.claude/skills/react-prop-type-spec/SKILL.md`, stamped with the
 gem version. Guard it against drift — a stale skill teaches an API the gem no

@@ -11,6 +11,11 @@ mis-renders, and nothing fails.
 This derives the JSON Schema from the `.tsx` the component already imports,
 so there is no third artifact to keep in sync.
 
+React is the case it was built for, not a requirement. `match_schema` checks
+any payload against any exported TypeScript type, so a Stimulus controller or
+a plain fetch client works the same way — only `react_component_props`, which
+reads props out of rendered mounts, is React-specific.
+
 ## Install
 
 ```ruby

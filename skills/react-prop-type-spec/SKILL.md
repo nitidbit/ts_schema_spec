@@ -1,206 +1,120 @@
 ---
 name: react-prop-type-spec
 description: >
-  Write or update RSpec tests that use TsSchemaSpec + match_schema to
-  verify a Rails endpoint's payload matches the TypeScript types consumed by a
-  React component. TRIGGER automatically (without being asked) whenever: adding
-  a new controller action; changing serialization in an existing action (helper
-  method, as_json fields, included associations); adding or renaming a key in a
-  render json: response or in props passed to a React component; converting a
-  Rails-mounted component from .jsx to .tsx; deleting a component's propTypes;
-  or adding a mount site that renders an existing component from an action that
-  has no match_schema spec yet. Applies to both JSON endpoints (render json:)
-  and HTML actions that pass props via react_component. Invoked as
-  /react-prop-type-spec.
+  Write or update RSpec tests that use match_schema to verify a Rails
+  endpoint's payload matches the TypeScript type the React side consumes.
+  TRIGGER automatically (without being asked) whenever: adding a controller
+  action; changing serialization in an existing one (helper method, as_json
+  fields, included associations); adding or renaming a key in a render json:
+  response or in props passed to a React component; converting a
+  Rails-mounted component from .jsx to .tsx; deleting a component's
+  propTypes; or rendering an already-typed component from an action that has
+  no match_schema spec. Covers both render json: and
+  react_component props. Invoked as /react-prop-type-spec.
 ---
 
-When invoked, write or update the RSpec test(s) that confirm the controller
-payload matches the TypeScript type(s) the React side expects. Follow every
-step below in order.
+This is a coverage rule, not only a change-triggered one — the spec is owed
+wherever the Rails-renders-React pairing exists, including with no Ruby diff at
+all. Three rules keep that from multiplying:
 
-## Why this exists, and when it is owed
+- **Repeated mounts of one component are a single example.**
+  `react_component_props` returns every mount and `match_schema` checks each.
+- **Distinct components each get their own assertion**, one per component the
+  action renders.
+- **Assert on the component Rails mounts.** A child receiving props from its
+  parent is covered transitively; use the parent's props type.
 
-TypeScript checks only our own call sites. Props arriving from Rails are `any`
-at runtime, so nothing but this spec ever compares the two sides — and a
-mismatch is silent: a missing key renders blank, a wrong type mis-renders,
-neither raises.
-
-The failure mode to keep in mind: Rails emits `level`, the component reads
-`assignedEntity`, both sides have passing tests, both are green, and every
-checkbox in the matrix silently renders disabled. Neither side is wrong on its
-own, which is why neither side's tests notice.
-
-So this is a **coverage rule, not only a change-triggered one**. The spec is
-owed whenever the Rails-renders-React pairing exists, which includes cases with
-no Ruby-side diff at all:
-
-- a component is converted `.jsx` → `.tsx`, or its `propTypes` are deleted;
-- a new mount site renders an already-typed component from a different action;
-- serialization changes, a prop is added or renamed, or a new action is added.
-
-Two scoping rules keep this from multiplying:
-
-- **One spec per action, not per mount site.** A partial that mounts the same
-  component five times in one action is one spec.
-- **Assert on the component Rails actually mounts.** A child that only receives
-  props from its parent is covered transitively — register the parent's props
-  type, not the child's.
-
-## Step 0 — Is this call site already covered?
+## Step 0 — Already covered?
 
 Covered = the spec for **the action rendering it** has a `match_schema` example
-asserting `react_component_props("ThatComponent")`. Find the action, grep its
-spec for `match_schema`, and check each hit is the same component _and_ the
-same action — a sibling component, another action, or a source file with no
-example is not coverage. Covered → stop. Otherwise continue.
+on that component. A sibling component, or the same component from another
+action, is not coverage. Covered → stop.
 
-## Step 1 — Identify the endpoint and its TypeScript consumer
+## Step 1 — Find the TypeScript consumer
 
-Read the controller action being added or changed. Find the React component
-that consumes it (if no React component consumes the data, exit the skill):
+- **JSON** (`render json:`): find the `fetch`/`axios` call and the type it
+  parses into.
+- **HTML** (`react_component`): find the view, the component it mounts, and its
+  props interface.
 
-- For **JSON actions** (`render json:`): find the `fetch`/`axios` call and the
-  TypeScript type it parses into.
-- For **HTML actions** (props passed via `react_component`): find the view, find
-  the component it mounts, and read its props interface.
+React is the common case, not a requirement — a payload read by a Stimulus
+controller, a plain fetch client or any other TypeScript module is checked the
+same way, via `response.parsed_body`. Only `react_component_props` is
+React-specific.
 
-## Step 2 — Confirm TypeScript types are exported
+No TypeScript consumer at all → exit the skill.
 
-`ts-json-schema-generator` can only target **exported** types. Check each type
-the test will validate:
+## Step 2 — Export the type
 
-- If a type is `interface Foo` or `type Foo` without `export`, add `export`.
-- `TsSchemaSpec` raises if the requested type is missing from the generated
-  document, so an unexported type fails loudly rather than validating against a
-  permissive schema.
+`ts-json-schema-generator` only targets exported types. Add `export` if it is
+missing.
 
-## Step 3 — Make the type strict enough to be worth validating
+## Step 3 — Tighten the type
 
-A schema is only as strong as the type it comes from. **A type whose fields are
-all optional validates almost anything**, including the payload that omits them
-— which defeats the point.
+Fields the server always sends should be required; a field that can be null is
+`string | null`, not `string?`; an index signature keeps the known keys
+required alongside it — likewise `Record<string, unknown>`, which is the
+same hole by another name: whatever the component actually reads out of that
+bag belongs in the type. An all-optional type is satisfied by `{}`, so asserting
+on one passes while catching nothing — which is worse than no spec, because it
+reads as coverage.
 
-Tightening a props type is a **change to application code**, not to the test.
-Make it a separate, reviewable commit and say so in the PR — do not fold it
-silently into a spec-only change. If the type cannot be tightened right now,
-say which fields are unconstrained rather than pretending the spec covers them.
+Tightening a props type edits application code rather than the test, so say
+that you did it. If it cannot be tightened now, report which fields are
+unconstrained rather than implying the spec covers them.
 
-Before writing the test, check the props type:
+## Step 4 — Write the test
 
-- Fields the server always sends must be **required**. If the server can send
-  `null` (a new record's attributes, say), the type is `string | null`, not
-  `string?`.
-- An index signature (`[key: string]: …`) lets any key through. If the type
-  needs one, keep the known keys required alongside it so a rename still fails.
+| Action | Data source |
+| ------ | ----------- |
+| `render json:` | `response.parsed_body["key"]` |
+| `react_component` | `react_component_props("ComponentName")` |
 
-## Step 4 — Point the spec at the TypeScript source
-
-`match_schema` takes the source path — relative to Rails root — and the
-exported type name, at the assertion itself:
-
-```ruby
-expect(props).to match_schema("app/javascript/MyComponent.tsx", "MyComponentProps")
-```
-
-Do not bind the schema in a `let` at the top of a describe block. Naming the
-file and type at each assertion is what makes a wrong pairing visible in
-review — a shared `let` is how a spec ends up asserting a sibling component's
-type against this action.
-
-When a spec file reads several types from the same source, bind the path to a
-constant at the top of that spec rather than repeating it.
-
-Generation is cached per **file**, so reading three types out of one `.ts`
-costs one `npx` invocation, not three.
-
-## Step 5 — Write the test
-
-### Choosing the data source
-
-| Action type                  | How to get the data                      |
-| ---------------------------- | ---------------------------------------- |
-| JSON action (`render json:`) | `response.parsed_body["key"]`            |
-| HTML action with React props | `react_component_props("ComponentName")` |
-
-`react_component_props` (from `ts_schema_spec/react_component_props`, included
-in your `rails_helper`) parses the rendered `data-react-props` attributes and
-returns **an array** — one entry per mount of that component on the page. It
-needs `render_views`.
-
-Pass the array straight to `match_schema`. It validates every entry and fails
-on an empty collection, so a page that stopped rendering the component fails
-instead of passing vacuously. Do not wrap it in `all` — `all` iterates zero
+`react_component_props` returns **an array**, one entry per mount, and needs
+`render_views`. Pass it straight to `match_schema`: it validates every entry
+and fails on an empty collection. Never wrap it in `all`, which iterates zero
 times on an empty array and asserts nothing.
-
-### Test structure
-
-Place the test in the existing controller spec file, in a new `describe` block.
 
 ```ruby
 describe "the props handed to MyComponent" do
   render_views
 
   it "matches MyComponentProps" do
-    # Build 2–3 records with meaningfully different traits so the schema is
-    # exercised across its variation points: optional fields present vs
-    # absent, different enum values, associations included vs nil.
     create(:factory_name, trait_a: true)
     create(:factory_name, :some_trait)
 
     get :show, params: { id: record.id }
 
     expect(response).to be_successful
-    props = react_component_props("MyComponent")
-    expect(props).to match_schema(MY_COMPONENT_TS, "MyComponentProps")
+    props = react_component_props("MyComponent") # an array, one entry per call site
+    expect(props).to match_schema("app/javascript/MyComponent.tsx", "MyComponentProps")
   end
 end
 ```
 
-### Rules for record creation
+Name the file and type at the assertion. When several examples read the same
+source, bind the path to a constant or a let variable.
 
-- Build **at least 2 records**, preferably 3, covering different states that
-  affect serialization.
-- Use existing factory traits. Do not define inline factory logic in the spec.
-- If a field is a computed method, create records that exercise its non-trivial
-  branch.
+Rules:
 
-### Rules for assertions
+- When appropriate, build multiple records with different traits, so optional
+  fields, enum values and nil associations are actually exercised. Use existing
+  factory traits where available.
+- Assert `response` is successful first, to catch redirects and error
+  responses rather than debugging them as schema failures.
+- Let `match_schema` do the shape checking; no hand-written field assertions.
+- Several components in one action: an example each, or one example marked
+  `:aggregate_failures` if rendering the page is expensive — without it the
+  first mismatch hides the rest.
+- Do not write a spec that only checks `response.status`, and do not duplicate
+  an existing `match_schema` for the same action.
 
-- Always assert `response` is successful before checking shape.
-- Validate with `match_schema` — do not hand-write field-by-field assertions
-  for type shape; that is what the matcher is for.
-- If the payload includes free-form metadata, assert its structure
-  (`.to be_a(Hash)`, `.to include(...)`) rather than schema-validating it.
-- If one action renders several distinct components, add a `match_schema`
-  assertion per component.
-
-## Step 6 — Verify the test passes
-
-Run only the new describe block:
+## Step 5 — Run it
 
 ```
 bundle exec rspec spec/controllers/my_controller_spec.rb --example "MyComponent"
 ```
 
-If `ts-json-schema-generator` fails, the error names the cause. Common fixes:
-
-- Type not exported (Step 2).
-- Wrong path — it is relative to Rails root.
-- A referenced type is not exported — export it too.
-
-If the matcher fails, the message names the failing pointer and constraint, and
-prints the payload, which points straight at the mismatch.
-
-## Cost
-
-Each distinct TypeScript **file** shells out to `npx ts-json-schema-generator`
-once per suite run and is cached after that, however many types you read from
-it. Validating the same type in many examples costs one generation.
-
-## What NOT to do
-
-- Do not write a test that only checks `response.status` — that belongs in a
-  separate auth/routing spec.
-- Do not duplicate an existing `match_schema` test covering the same action.
-- Do not skip Step 3 and validate against an all-optional type; it will pass on
-  a payload that is entirely wrong.
+Generation errors name their cause — usually an unexported type, or a path that
+is not relative to Rails root. A matcher failure names the failing pointer and
+prints the payload.

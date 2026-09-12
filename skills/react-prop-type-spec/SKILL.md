@@ -101,8 +101,8 @@ Before writing the test, check the props type:
 TsSchemaSpec.schema_for("app/javascript/components/my_feature/MyComponent.tsx", "MyComponentProps")
 ```
 
-There is no registry. If a spec file reads several types from the same source,
-bind the path to a constant at the top of that spec rather than repeating it.
+When a spec file reads several types from the same source, bind the path to a
+constant at the top of that spec rather than repeating it.
 
 Generation is cached per **file**, so reading three types out of one `.ts`
 costs one `npx` invocation, not three.

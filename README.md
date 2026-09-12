@@ -126,9 +126,8 @@ only covers the branches that response took.
 | `TsSchemaSpec::Skill.check!(root)`      | raises if the installed skill is stale or missing       |
 | `TsSchemaSpec.clear_cache!`             | drops the per-file schema cache                         |
 
-`path` is relative to Rails root. There is no registry — if a spec reads
-several types from one source, bind the path to a constant at the top of the
-file.
+`path` is relative to Rails root. When a spec reads several types from one
+source, bind the path to a constant at the top of the file.
 
 ## What a failure looks like
 

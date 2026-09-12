@@ -45,6 +45,31 @@ RSpec.configure do |config|
 end
 ```
 
+### Path aliases
+
+If your TypeScript imports through aliases (`@/components/Foo`), point the
+generator at your tsconfig:
+
+```ruby
+# spec/rails_helper.rb
+TsSchemaSpec.configure do |config|
+  config.tsconfig = Rails.root.join("tsconfig.json").to_s
+  config.generator_args = []  # anything else to pass through
+end
+```
+
+**This is not optional decoration.** An import the generator cannot resolve
+does not fail — it becomes an empty schema, and an empty schema validates
+anything:
+
+```json
+"role": {}
+```
+
+So an aliased type without a tsconfig gives you a green spec that accepts a
+string, a number or null where an object was declared. If any type you assert
+on imports through an alias, set this.
+
 ### The agent skill
 
 The gem ships the skill that teaches an agent when one of these specs is owed
@@ -92,6 +117,13 @@ end
 returns **an array** — one entry per mount of that component on the page. It
 needs `render_views`.
 
+It assumes [react-rails](https://github.com/reactjs/react-rails) conventions —
+`data-react-class` and `data-react-props` on the mount element. Other
+integrations mount differently (react_on_rails uses its own attributes), and
+against those it finds nothing and reports an empty collection rather than a
+missing-attribute error. Supporting another convention is a small change to one
+file; open a PR if you need it.
+
 ```ruby
 describe "the props handed to RoleMatrix" do
   render_views
@@ -126,6 +158,7 @@ only covers the branches that response took.
 | `match_schema(path, type)`              | matcher; validates an object, or every item of a collection |
 | `react_component_props(name[, html])`   | array of props hashes, one per mount                    |
 | `TsSchemaSpec::Skill.check!(root)`      | raises if the installed skill is stale or missing       |
+| `TsSchemaSpec.configure`                | `tsconfig` and extra generator arguments                |
 | `TsSchemaSpec.clear_cache!`             | drops the per-file schema cache                         |
 
 `path` is relative to Rails root, and goes at the assertion rather than in a
@@ -180,7 +213,8 @@ three. The cache is per process, so parallel workers each pay it once.
 | ---------------------------------------------------- | ------------------------------------------------------------ |
 | `GenerationError: ... Is it exported?`               | the type has no `export`, or the name is misspelled           |
 | `GenerationError` listing a rerunnable command       | run it — the generator's own stderr is in the message         |
-| passes against an obviously wrong payload            | the type is all-optional, or you scoped to the wrong type     |
+| passes against an obviously wrong payload            | the type is all-optional, or an unresolved import became `{}` |
+| `could not run npx ts-json-schema-generator`         | the generator is not in your `node_modules`                   |
 | `disallowed additional property`                     | see above — the payload sends what TypeScript does not declare |
 
 ## What this can't catch

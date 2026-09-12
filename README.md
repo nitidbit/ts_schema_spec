@@ -15,8 +15,13 @@ so there is no third artifact to keep in sync.
 
 ```ruby
 # Gemfile
-gem "ts_schema_spec", github: "nitidbit/ts_schema_spec", group: :test
+gem "ts_schema_spec", github: "nitidbit/ts_schema_spec", tag: "v0.1.0", group: :test
 ```
+
+Pin the tag. Without one, Bundler follows the default branch, and
+`bundle update` will pull an API change mid-port — `Skill.check!` compares the
+installed skill against `TsSchemaSpec::VERSION`, which does not move as `main`
+moves, so unpinned drift passes a check that ought to fail.
 
 The generator parses your app's TypeScript, so it resolves from your
 `node_modules` rather than being vendored:

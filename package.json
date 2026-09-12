@@ -1,0 +1,9 @@
+{
+  "name": "ts_schema_spec",
+  "private": true,
+  "description": "Dev-only: the gem's own suite resolves the generator the same way a consuming repo does.",
+  "devDependencies": {
+    "ts-json-schema-generator": "^2.4.0",
+    "typescript": "^5.4.0"
+  }
+}

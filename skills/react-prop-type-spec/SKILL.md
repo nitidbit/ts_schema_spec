@@ -13,14 +13,12 @@ description: >
   react_component props. Invoked as /react-prop-type-spec.
 ---
 
-This is a coverage rule, not only a change-triggered one — the spec is owed
-wherever the Rails-renders-React pairing exists, including with no Ruby diff at
-all. Three rules keep that from multiplying:
+A spec is owed wherever the Rails-renders-React pairing exists, not only when
+something changes — including where there is no Ruby diff at all. Two rules
+keep that from multiplying:
 
 - **Repeated mounts of one component are a single example.**
   `react_component_props` returns every mount and `match_schema` checks each.
-- **Distinct components each get their own assertion**, one per component the
-  action renders.
 - **Assert on the component Rails mounts.** A child receiving props from its
   parent is covered transitively; use the parent's props type.
 
@@ -51,13 +49,14 @@ missing.
 
 ## Step 3 — Tighten the type
 
-Fields the server always sends should be required; a field that can be null is
-`string | null`, not `string?`; an index signature keeps the known keys
-required alongside it — likewise `Record<string, unknown>`, which is the
-same hole by another name: whatever the component actually reads out of that
-bag belongs in the type. An all-optional type is satisfied by `{}`, so asserting
-on one passes while catching nothing — which is worse than no spec, because it
-reads as coverage.
+An all-optional type is satisfied by `{}`, so asserting on one passes while
+catching nothing — worse than no spec, because it reads as coverage.
+
+- A field the server always sends: **required**.
+- A field the server can send as null: `string | null`, not `string?`.
+- An index signature or `Record<string, unknown>`: keep the keys the component
+  actually reads **required alongside it**. Whatever it reads out of that bag
+  belongs in the type.
 
 Tightening a props type edits application code rather than the test, so say
 that you did it. If it cannot be tightened now, report which fields are
@@ -86,7 +85,7 @@ describe "the props handed to MyComponent" do
     get :show, params: { id: record.id }
 
     expect(response).to be_successful
-    props = react_component_props("MyComponent") # an array, one entry per call site
+    props = react_component_props("MyComponent")
     expect(props).to match_schema("app/javascript/MyComponent.tsx", "MyComponentProps")
   end
 end
@@ -95,7 +94,7 @@ end
 Name the file and type at the assertion. When several examples read the same
 source, bind the path to a constant or a let variable.
 
-Rules:
+Guidelines:
 
 - When appropriate, build multiple records with different traits, so optional
   fields, enum values and nil associations are actually exercised. Use existing
@@ -108,13 +107,13 @@ Rules:
   first mismatch hides the rest.
 - Do not write a spec that only checks `response.status`, and do not duplicate
   an existing `match_schema` for the same action.
+- **When it fails, fix Rails.** The type is the consumer's contract: if the
+  component needs a field, the payload is wrong. Only loosen the type when the
+  component genuinely does not need what it declares — loosening is always the
+  quicker route to green, and it is how this stops catching anything.
 
 ## Step 5 — Run it
 
 ```
 bundle exec rspec spec/controllers/my_controller_spec.rb --example "MyComponent"
 ```
-
-Generation errors name their cause — usually an unexported type, or a path that
-is not relative to Rails root. A matcher failure names the failing pointer and
-prints the payload.

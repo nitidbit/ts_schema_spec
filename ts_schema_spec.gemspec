@@ -19,6 +19,6 @@ Gem::Specification.new do |spec|
   spec.files = Dir["lib/**/*.{rb,rake}", "skills/**/*", "README.md", "LICENSE.txt"]
   spec.require_paths = ["lib"]
 
-  spec.add_dependency "json_schemer", "~> 2.3"
-  spec.add_dependency "nokogiri", "~> 1.16"
+  spec.add_dependency "json_schemer", ">= 2.0", "< 3.0"
+  spec.add_dependency "nokogiri", ">= 1.10"
 end

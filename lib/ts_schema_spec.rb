@@ -5,6 +5,8 @@ require "json_schemer"
 require_relative "ts_schema_spec/version"
 require_relative "ts_schema_spec/generator"
 
+require_relative "ts_schema_spec/railtie" if defined?(Rails::Railtie)
+
 module TsSchemaSpec
   class Error < StandardError; end
   class GenerationError < Error; end

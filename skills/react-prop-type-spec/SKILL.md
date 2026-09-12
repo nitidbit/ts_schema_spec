@@ -2,7 +2,7 @@
 name: react-prop-type-spec
 description: >
   Write or update RSpec tests that use match_schema to verify a Rails
-  endpoint's payload matches the TypeScript type the React side consumes.
+  endpoint's payload matches the TypeScript type that consumes it.
   TRIGGER automatically (without being asked) whenever: adding a controller
   action; changing serialization in an existing one (helper method, as_json
   fields, included associations); adding or renaming a key in a render json:
@@ -13,8 +13,8 @@ description: >
   react_component props. Invoked as /react-prop-type-spec.
 ---
 
-A spec is owed wherever the Rails-renders-React pairing exists, not only when
-something changes — including where there is no Ruby diff at all. Two rules
+A spec is owed any time data is handed from Ruby to TypeScript — not only when
+something changes, and including where there is no Ruby diff at all. Two rules
 keep that from multiplying:
 
 - **Repeated mounts of one component are a single example.**

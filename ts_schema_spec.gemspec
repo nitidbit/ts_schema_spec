@@ -16,7 +16,7 @@ Gem::Specification.new do |spec|
   spec.metadata["homepage_uri"] = spec.homepage
   spec.metadata["source_code_uri"] = spec.homepage
 
-  spec.files = Dir["lib/**/*.{rb,rake}", "skills/**/*", "docs/**/*.md", "README.md"]
+  spec.files = Dir["lib/**/*.{rb,rake}", "skills/**/*", "README.md"]
   spec.require_paths = ["lib"]
 
   spec.add_dependency "json_schemer", "~> 2.3"

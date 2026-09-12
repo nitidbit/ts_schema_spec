@@ -79,7 +79,7 @@ it "matches AccountPayload" do
   get :index, format: :json
 
   expect(response).to be_successful
-  expect(response.parsed_body["accounts"]).to all match_schema(schema)
+  expect(response.parsed_body["accounts"]).to match_schema(schema)
 end
 ```
 
@@ -105,14 +105,15 @@ describe "the props handed to RoleMatrix" do
 
     expect(response).to be_successful
     props = react_component_props("RoleMatrix")
-    expect(props).to_not be_empty
-    expect(props).to all match_schema(schema)
+    expect(props).to match_schema(schema)
   end
 end
 ```
 
-Assert `to_not be_empty` first, or a page that stopped rendering the component
-passes vacuously. Build two or three records with different traits so optional
+Pass the whole array. `match_schema` validates every item and fails on an
+empty collection, so a page that stopped rendering the component fails rather
+than passing vacuously — don't reach for `all`, which iterates zero times and
+asserts nothing. Build two or three records with different traits so optional
 fields, enum values and nil associations actually get exercised — one response
 only covers the branches that response took.
 
@@ -121,7 +122,7 @@ only covers the branches that response took.
 | Call                                    | Returns                                                |
 | --------------------------------------- | ------------------------------------------------------ |
 | `TsSchemaSpec.schema_for(path, type)`   | a `JSONSchemer` schema scoped to that exported type     |
-| `match_schema(schema)`                  | RSpec matcher; names the failing pointer, dumps payload |
+| `match_schema(schema)`                  | matcher; validates an object, or every item of a collection |
 | `react_component_props(name[, html])`   | array of props hashes, one per mount                    |
 | `TsSchemaSpec::Skill.check!(root)`      | raises if the installed skill is stale or missing       |
 | `TsSchemaSpec.clear_cache!`             | drops the per-file schema cache                         |

@@ -22,7 +22,7 @@ RSpec.describe "match_schema" do
 
   it "says (root) when the payload itself is the wrong shape" do
     expect {
-      expect([]).to match_schema(schema)
+      expect("not a hash").to match_schema(schema)
     }.to raise_error(RSpec::Expectations::ExpectationNotMetError, /\(root\):/)
   end
 

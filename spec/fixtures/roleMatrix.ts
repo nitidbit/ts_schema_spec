@@ -13,3 +13,5 @@ export interface Role {
 interface NotExported {
   hidden: boolean;
 }
+
+export type RoleList = Role[];

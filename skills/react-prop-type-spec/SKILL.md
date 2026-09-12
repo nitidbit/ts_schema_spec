@@ -98,7 +98,7 @@ Before writing the test, check the props type:
 `schema_for` takes a path relative to Rails root and the exported type name:
 
 ```ruby
-TsSchemaSpec.schema_for("app/javascript/components/my_feature/MyComponent.tsx", "MyComponentProps")
+TsSchemaSpec.schema_for("app/javascript/MyComponent.tsx", "MyComponentProps")
 ```
 
 When a spec file reads several types from the same source, bind the path to a
@@ -121,8 +121,10 @@ in your `rails_helper`) parses the rendered `data-react-props` attributes and
 returns **an array** — one entry per mount of that component on the page. It
 needs `render_views`.
 
-Assert `expect(props).to_not be_empty` first, or a page that stopped rendering
-the component would pass vacuously.
+Pass the array straight to `match_schema`. It validates every entry and fails
+on an empty collection, so a page that stopped rendering the component fails
+instead of passing vacuously. Do not wrap it in `all` — `all` iterates zero
+times on an empty array and asserts nothing.
 
 ### Test structure
 
@@ -145,8 +147,7 @@ describe "the props handed to MyComponent" do
 
     expect(response).to be_successful
     props = react_component_props("MyComponent")
-    expect(props).to_not be_empty
-    expect(props).to all match_schema(schema)
+    expect(props).to match_schema(schema)
   end
 end
 ```

@@ -2,15 +2,16 @@
 name: react-prop-type-spec
 description: >
   Write or update RSpec tests that use match_schema to verify a Rails
-  endpoint's payload matches the TypeScript type that consumes it.
-  TRIGGER automatically (without being asked) whenever: adding a controller
-  action; changing serialization in an existing one (helper method, as_json
-  fields, included associations); adding or renaming a key in a render json:
-  response or in props passed to a React component; converting a
-  Rails-mounted component from .jsx to .tsx; deleting a component's
-  propTypes; or rendering an already-typed component from an action that has
-  no match_schema spec. Covers both render json: and
-  react_component props. Invoked as /react-prop-type-spec.
+  endpoint's payload matches the TypeScript type that consumes it. TRIGGER
+  automatically (without being asked) whenever data crossing from Ruby to
+  TypeScript is added or changed: adding a controller action; changing
+  serialization in an existing one (helper method, as_json fields, included
+  associations); adding or renaming a key in a render json: response or in
+  props handed to a component; converting a Rails-mounted component from .jsx
+  to .tsx; deleting a component's propTypes; or rendering an already-typed
+  component from an action that has no match_schema spec. React is the common
+  case, not a requirement — a Stimulus controller or a plain fetch client
+  reading the payload counts the same. Invoked as /react-prop-type-spec.
 ---
 
 A spec is owed any time data is handed from Ruby to TypeScript — not only when

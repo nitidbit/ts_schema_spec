@@ -71,15 +71,13 @@ end
 ### A JSON endpoint
 
 ```ruby
-let(:schema) do
-  TsSchemaSpec.schema_for("app/javascript/types/account.ts", "AccountPayload")
-end
+ACCOUNT_TS = "app/javascript/types/account.ts"
 
 it "matches AccountPayload" do
   get :index, format: :json
 
   expect(response).to be_successful
-  expect(response.parsed_body["accounts"]).to match_schema(schema)
+  expect(response.parsed_body["accounts"]).to match_schema(ACCOUNT_TS, "AccountPayload")
 end
 ```
 
@@ -93,9 +91,7 @@ needs `render_views`.
 describe "the props handed to RoleMatrix" do
   render_views
 
-  let(:schema) do
-    TsSchemaSpec.schema_for("app/javascript/components/roles/RoleMatrix.tsx", "RoleMatrixProps")
-  end
+  role_matrix = "app/javascript/components/roles/RoleMatrix.tsx"
 
   it "matches RoleMatrixProps" do
     create(:account, :with_roles)
@@ -105,7 +101,7 @@ describe "the props handed to RoleMatrix" do
 
     expect(response).to be_successful
     props = react_component_props("RoleMatrix")
-    expect(props).to match_schema(schema)
+    expect(props).to match_schema(role_matrix, "RoleMatrixProps")
   end
 end
 ```
@@ -122,13 +118,19 @@ only covers the branches that response took.
 | Call                                    | Returns                                                |
 | --------------------------------------- | ------------------------------------------------------ |
 | `TsSchemaSpec.schema_for(path, type)`   | a `JSONSchemer` schema scoped to that exported type     |
-| `match_schema(schema)`                  | matcher; validates an object, or every item of a collection |
+| `match_schema(path, type)`              | matcher; validates an object, or every item of a collection |
 | `react_component_props(name[, html])`   | array of props hashes, one per mount                    |
 | `TsSchemaSpec::Skill.check!(root)`      | raises if the installed skill is stale or missing       |
 | `TsSchemaSpec.clear_cache!`             | drops the per-file schema cache                         |
 
-`path` is relative to Rails root. When a spec reads several types from one
-source, bind the path to a constant at the top of the file.
+`path` is relative to Rails root, and goes at the assertion rather than in a
+`let` — a schema bound once at the top of a describe block is how you end up
+asserting one component's type against another's action. When several examples
+read the same source, bind the path itself to a constant.
+
+`schema_for` stays public for use outside RSpec; the matcher calls it for you,
+and generation is cached per file, so naming the same source in twenty
+examples costs one `npx` run.
 
 ## What a failure looks like
 

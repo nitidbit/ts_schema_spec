@@ -13,6 +13,7 @@ module TsSchemaSpec
 
   class << self
     def schema_for(source, type)
+      validate_arguments!(source, type)
       document = document_for(source)
 
       unless document.fetch("definitions", {}).key?(type)
@@ -33,6 +34,19 @@ module TsSchemaSpec
     end
 
     private
+
+    PATH_LIKE = %r{/|\.tsx?\z}
+
+    def validate_arguments!(source, type)
+      raise ArgumentError, "expects a path and a type name, e.g. schema_for(\"app/javascript/Foo.tsx\", \"FooProps\")" if type.nil?
+
+      return unless type.to_s.match?(PATH_LIKE) && !source.to_s.match?(PATH_LIKE)
+
+      raise ArgumentError, <<~MSG
+        the arguments look reversed: #{source.inspect} was given as the source
+        file and #{type.inspect} as the type name. Expected (path, type).
+      MSG
+    end
 
     def document_for(source)
       documents[File.expand_path(source.to_s)] ||= Generator.generate(source)

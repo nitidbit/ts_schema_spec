@@ -40,8 +40,9 @@ module TsSchemaSpec
   end
 end
 
-RSpec::Matchers.define :match_schema do |schema|
+RSpec::Matchers.define :match_schema do |source, type|
   match do |actual|
+    schema = TsSchemaSpec.schema_for(source, type)
     @errors = TsSchemaSpec::Matching.errors(schema, actual)
     @errors.empty?
   end
@@ -66,7 +67,7 @@ RSpec::Matchers.define :match_schema do |schema|
     end
 
     <<~MSG
-      expected the payload to match the schema, but:
+      expected the payload to match #{type} (#{source}), but:
       #{details.join("\n")}
 
       Payload was:
@@ -75,6 +76,6 @@ RSpec::Matchers.define :match_schema do |schema|
   end
 
   failure_message_when_negated do |actual|
-    "expected the payload not to match the schema, but it did:\n#{JSON.pretty_generate(actual)}"
+    "expected the payload not to match #{type} (#{source}), but it did:\n#{JSON.pretty_generate(actual)}"
   end
 end

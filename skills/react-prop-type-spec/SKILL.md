@@ -95,11 +95,17 @@ Before writing the test, check the props type:
 
 ## Step 4 — Point the spec at the TypeScript source
 
-`schema_for` takes a path relative to Rails root and the exported type name:
+`match_schema` takes the source path — relative to Rails root — and the
+exported type name, at the assertion itself:
 
 ```ruby
-TsSchemaSpec.schema_for("app/javascript/MyComponent.tsx", "MyComponentProps")
+expect(props).to match_schema("app/javascript/MyComponent.tsx", "MyComponentProps")
 ```
+
+Do not bind the schema in a `let` at the top of a describe block. Naming the
+file and type at each assertion is what makes a wrong pairing visible in
+review — a shared `let` is how a spec ends up asserting a sibling component's
+type against this action.
 
 When a spec file reads several types from the same source, bind the path to a
 constant at the top of that spec rather than repeating it.
@@ -134,8 +140,6 @@ Place the test in the existing controller spec file, in a new `describe` block.
 describe "the props handed to MyComponent" do
   render_views
 
-  let(:schema) { TsSchemaSpec.schema_for(MY_COMPONENT_TS, "MyComponentProps") }
-
   it "matches MyComponentProps" do
     # Build 2–3 records with meaningfully different traits so the schema is
     # exercised across its variation points: optional fields present vs
@@ -147,7 +151,7 @@ describe "the props handed to MyComponent" do
 
     expect(response).to be_successful
     props = react_component_props("MyComponent")
-    expect(props).to match_schema(schema)
+    expect(props).to match_schema(MY_COMPONENT_TS, "MyComponentProps")
   end
 end
 ```

@@ -1,21 +1,16 @@
 # ts_schema_spec
 
-Assert that a Rails payload matches the TypeScript type the React side
-actually consumes.
+Add tests to your ruby test suite that assert that a JSON
+payload generated in Ruby matches the consumer's Typescript type.
 
-TypeScript checks your own call sites. It cannot check props crossing
-`react_component()` or a `render json:` boundary — those are `any` at runtime.
-So a mismatch is silent: a missing key renders blank, a wrong type
-mis-renders, and nothing fails.
+Build for Rspec, but could be ported to other test frameworks (Minitest, etc.)
 
-This derives the JSON Schema from the `.tsx` the component already imports,
-so there is no third artifact to keep in sync.
+A React-specific provided helper, `react_component_props`, reads props out of
+rendered mounts.
 
-React is the case it was built for, not a requirement. `match_schema` checks
+React is the case this gem was built for, not a requirement. `match_schema` checks
 any payload against any exported TypeScript type, so a Stimulus controller or
-a plain fetch client works the same way — only `react_component_props`, which
-reads props out of rendered mounts, is React-specific.
-
+a plain fetch client works the same way.
 ## Install
 
 ```ruby
@@ -23,22 +18,19 @@ reads props out of rendered mounts, is React-specific.
 gem "ts_schema_spec", github: "nitidbit/ts_schema_spec", tag: "v0.5.1", group: :test
 ```
 
-Pin the tag. Without one, Bundler follows the default branch, and
-`bundle update` will pull an API change mid-port — `Skill.check!` compares the
-installed skill against `TsSchemaSpec::VERSION`, which does not move as `main`
-moves, so unpinned drift passes a check that ought to fail.
-
-The generator parses your app's TypeScript, so it resolves from your
-`node_modules` rather than being vendored:
+This gem requires ts-json-schema-generator, resolved from your
+project's `node_modules`.
 
 ```
 npm install --save-dev ts-json-schema-generator
 ```
 
+Add the following ruby code to your test suite
+
 ```ruby
 # spec/rails_helper.rb
 require "ts_schema_spec/rspec"
-require "ts_schema_spec/react_component_props"
+require "ts_schema_spec/react_component_props" # optional, for parsing props from rendered html. see below.
 
 RSpec.configure do |config|
   config.include TsSchemaSpec::ReactComponentProps
@@ -80,14 +72,10 @@ to be copied in and committed:
 RAILS_ENV=test bundle exec rake ts_schema_spec:install_skill
 ```
 
-`RAILS_ENV=test` is required when the gem is in `group: :test`, as above —
-rake tasks come from the railtie, which only loads in an environment that
-loads the gem, so the task simply does not exist in development. Add the gem
-to `group :development, :test` if you would rather type less.
+`RAILS_ENV=test` is required when the gem is in `group: :test`, as above.
 
 It lands in `.claude/skills/react-prop-type-spec/SKILL.md`, stamped with the
-gem version. Guard it against drift — a stale skill teaches an API the gem no
-longer has, which looks like it is working:
+gem version. To keep the skill in sync with the gem version:
 
 ```ruby
 # spec/ts_schema_spec_skill_spec.rb
@@ -145,13 +133,11 @@ describe "the props handed to RoleMatrix" do
 end
 ```
 
-Pass the whole array. `match_schema` validates every item and fails on an
-empty collection — either way round, so `to_not match_schema` does not hand
-the vacuous pass back. A page that stopped rendering the component fails
-rather than passing silently; don't reach for `all`, which iterates zero times
-and asserts nothing. Build two or three records with different traits so optional
-fields, enum values and nil associations actually get exercised — one response
-only covers the branches that response took.
+`match_schema` accepts a hash or an array of hashes. If given an array,
+`match_schema` validates every item and fails on an
+empty array.  This means that a page that stopped rendering the component fails
+rather than passing silently.  An alternative construction,
+`expect(props).to all match_schema(...)` would pass on an empty array.
 
 ## API
 
@@ -189,7 +175,10 @@ Payload was:
 }
 ```
 
-## Two things that will surprise you
+## Notes and Reccomendations
+
+**Be Through.** Especially when your type has optional fields, enum values, associations,
+etc., build as many records as needed, with different traits, so that all variations get exercised.
 
 **Undeclared keys fail.** `ts-json-schema-generator` emits
 `additionalProperties: false`, so a payload carrying a key the TypeScript does
@@ -206,6 +195,7 @@ props type is an application change — give it its own commit.
 
 ## Cost
 
+Schema generation is cached, so that... this section is confusing, fix it...
 One `npx ts-json-schema-generator` invocation per **file** per suite run,
 cached by path — reading three types out of one `.ts` costs one parse, not
 three. The cache is per process, so parallel workers each pay it once.
@@ -237,9 +227,11 @@ structured serializer catches that class of mistake; this does not.
 branches it took. Nullable fields, empty collections and conditional
 associations need records built to hit them.
 
-## Why not generate the TypeScript instead?
+## Alternatives
 
-If you can, do. [Typelizer](https://typelizer.dev/) and
+An alternate methodology is to generate Typescript types from ruby.
+
+[Typelizer](https://typelizer.dev/) and
 [types_from_serializers](https://github.com/ElMassimo/types_from_serializers)
 make Ruby canonical and generate the types, so drift becomes structurally
 impossible rather than something you test for. That beats this.
@@ -259,3 +251,6 @@ problem relocated.
 Even with generated types, `react_component` props stay uncovered: Typelizer
 types serializer output and knows nothing about the outer props object
 assembled in a view. That part is this gem's permanently.
+
+
+That part is this gem's permanently.??? what does that sentence even mean?

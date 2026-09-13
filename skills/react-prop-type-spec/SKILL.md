@@ -59,7 +59,7 @@ An all-optional type is satisfied by `{}`, so asserting on one asserts nothing.
 - An index signature or `Record<string, unknown>`: keep the keys the component
   actually reads **required alongside it**.
 
-This edits application code rather than the test, so say that you did it. If
+This edits the app's TypeScript rather than the test, so say that you did it. If
 it cannot be tightened now, report which fields are unconstrained rather than
 implying the spec covers them.
 

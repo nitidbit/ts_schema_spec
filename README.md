@@ -186,27 +186,28 @@ branches it took. When the type has optional fields, enum values or nullable
 associations, create as many records, with as many different traits, as it
 takes to put those branches in the payload.
 
-**Tighten the type first.** An all-optional type is satisfied by `{}`, so
-asserting against one passes while catching nothing — worse than no spec,
-because it reads as coverage. A field the server always sends should be
-required; a field that can be null should be `string | null` rather than
-`string?`; and keys the component reads out of an index signature or
-`Record<string, unknown>` should be declared required alongside it. Tightening
-a props type is an application change — give it its own commit.
+**Tighten the type first.** A schema is only as strong as the type it comes
+from, and an all-optional type is satisfied by `{}` — asserting against one
+passes while catching nothing, which is worse than no spec, because it reads
+as coverage.
 
-**Use the strongest type available.** `status: string` accepts anything;
-`status: "draft" | "published"` catches both a typo and a value the consumer
-was never taught about. Prefer a literal union over `string`, and a declared
-shape over `Record<string, unknown>`. A union like that only stays honest if
-it tracks the Ruby enum it mirrors, which needs some way of sharing constants
-from Ruby into TypeScript — a generator, a shared JSON file, whatever suits
-your repo. That is outside this gem's scope, but with one in place, and a
-record for each value in the example, a drifted union fails here rather than
-in the browser.
+- A field the server always sends: **required**.
+- A field that can be null: `string | null`, not `string?`.
+- A field with a fixed set of values: a literal union
+  (`"draft" | "published"`), not `string` — which catches a typo and a value
+  the consumer was never taught about.
+- An index signature or `Record<string, unknown>`: declare the keys the
+  component actually reads, required, alongside it.
+
+A literal union only stays honest while it tracks the Ruby enum it mirrors,
+which needs some way of sharing constants from Ruby into TypeScript — a
+generator, a shared JSON file, whatever suits your repo. That is outside this
+gem's scope, but with one in place, and a record for each value in the
+example, a drifted union fails here rather than in the browser.
 
 **Pass the whole collection.** `match_schema` validates every item and fails
-on an empty one. `expect(props).to all match_schema(...)` iterates zero times
-on an empty array and asserts nothing.
+on an empty one. Avoid `expect(props).to all match_schema(...)`, which
+passes on an empty array, hiding an issue with generation.
 
 **Assert the response is successful first.** Otherwise a redirect or a 500
 arrives as a schema failure, and you debug the wrong thing.

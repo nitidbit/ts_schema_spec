@@ -1,16 +1,17 @@
 # ts_schema_spec
 
-Add tests to your ruby test suite that assert that a JSON
-payload generated in Ruby matches the consumer's Typescript type.
+Add tests to your Ruby test suite that assert a JSON payload generated in Ruby
+matches the TypeScript type of the consumer.
 
-Build for Rspec, but could be ported to other test frameworks (Minitest, etc.)
+Built for RSpec, but could be ported to other test frameworks (Minitest, etc.).
 
-A React-specific provided helper, `react_component_props`, reads props out of
+`react_component_props`, an optional React-specific helper, reads props out of
 rendered mounts.
 
-React is the case this gem was built for, not a requirement. `match_schema` checks
-any payload against any exported TypeScript type, so a Stimulus controller or
-a plain fetch client works the same way.
+React is the case this gem was built for, not a requirement. `match_schema`
+checks any payload against any exported TypeScript type, so a Stimulus
+controller or a plain fetch client works the same way.
+
 ## Install
 
 ```ruby
@@ -18,19 +19,19 @@ a plain fetch client works the same way.
 gem "ts_schema_spec", github: "nitidbit/ts_schema_spec", tag: "v0.5.1", group: :test
 ```
 
-This gem requires ts-json-schema-generator, resolved from your
-project's `node_modules`.
+This gem requires ts-json-schema-generator, resolved from your project's
+`node_modules`:
 
 ```
 npm install --save-dev ts-json-schema-generator
 ```
 
-Add the following ruby code to your test suite
+Add the following to your test suite:
 
 ```ruby
 # spec/rails_helper.rb
 require "ts_schema_spec/rspec"
-require "ts_schema_spec/react_component_props" # optional, for parsing props from rendered html. see below.
+require "ts_schema_spec/react_component_props" # optional, for parsing props from rendered HTML. See below.
 
 RSpec.configure do |config|
   config.include TsSchemaSpec::ReactComponentProps
@@ -105,14 +106,15 @@ end
 returns **an array** — one entry per mount of that component on the page. It
 needs `render_views`.
 
-It assumes [react-rails](https://github.com/reactjs/react-rails) conventions —
+It assumes [react-rails](https://github.com/reactjs/react-rails) conventions:
 `data-react-class` and `data-react-props` on the mount element. A namespaced
 class matches on its trailing segment, so `admin/SidebarNav` and
-`Admin.SidebarNav` both answer to `"SidebarNav"`. Other
-integrations mount differently (react_on_rails uses its own attributes), and
-against those it finds nothing and reports an empty collection rather than a
-missing-attribute error. Supporting another convention is a small change to one
-file; open a PR if you need it.
+`Admin.SidebarNav` both answer to `"SidebarNav"`.
+
+Other integrations mount differently — react_on_rails uses its own attributes
+— and against those it finds nothing and reports an empty collection rather
+than a missing-attribute error. Supporting another convention is a small
+change to one file; open a PR if you need it.
 
 ```ruby
 describe "the props handed to RoleMatrix" do
@@ -133,31 +135,31 @@ describe "the props handed to RoleMatrix" do
 end
 ```
 
-`match_schema` accepts a hash or an array of hashes. If given an array,
-`match_schema` validates every item and fails on an
-empty array.  This means that a page that stopped rendering the component fails
-rather than passing silently.  An alternative construction,
-`expect(props).to all match_schema(...)` would pass on an empty array.
+`match_schema` accepts a hash or an array of hashes. Given an array, it
+validates every item and fails on an empty one — in both directions, so
+`to_not match_schema` does not pass vacuously either. A page that stopped
+rendering the component fails rather than passing silently. The alternative
+construction, `expect(props).to all match_schema(...)`, would pass on an empty
+array.
 
 ## API
 
-| Call                                    | Returns                                                |
-| --------------------------------------- | ------------------------------------------------------ |
-| `TsSchemaSpec.schema_for(path, type)`   | a `JSONSchemer` schema scoped to that exported type     |
-| `match_schema(path, type)`              | matcher; validates an object, or every item of a collection |
-| `react_component_props(name[, html])`   | array of props hashes, one per mount                    |
-| `TsSchemaSpec::Skill.check!(root)`      | raises if the installed skill is stale or missing       |
-| `TsSchemaSpec.configure`                | `tsconfig` and extra generator arguments                |
-| `TsSchemaSpec.clear_cache!`             | drops the per-file schema cache                         |
+| Call                                    | Returns                                                     |
+| --------------------------------------- | ----------------------------------------------------------- |
+| `TsSchemaSpec.schema_for(path, type)`   | a `JSONSchemer` schema scoped to that exported type          |
+| `match_schema(path, type)`              | matcher; validates a hash, or every item of an array         |
+| `react_component_props(name[, html])`   | array of props hashes, one per mount                         |
+| `TsSchemaSpec::Skill.check!(root)`      | raises if the installed skill is stale or missing            |
+| `TsSchemaSpec.configure`                | sets `tsconfig` and extra generator arguments                |
+| `TsSchemaSpec.clear_cache!`             | drops the generated-schema cache                             |
 
-`path` is relative to Rails root, and goes at the assertion rather than in a
-`let` — a schema bound once at the top of a describe block is how you end up
-asserting one component's type against another's action. When several examples
-read the same source, bind the path itself to a constant.
+`path` is resolved from wherever the suite runs, which is the Rails root in
+practice. Name the type at the assertion, so an example says which type it is
+checking. When several examples read the same source, bind the path to a
+constant.
 
-`schema_for` stays public for use outside RSpec; the matcher calls it for you,
-and generation is cached per file, so naming the same source in twenty
-examples costs one `npx` run.
+`schema_for` stays public, but is not needed when using the RSpec matcher,
+which calls it internally.
 
 ## What a failure looks like
 
@@ -175,10 +177,11 @@ Payload was:
 }
 ```
 
-## Notes and Reccomendations
+## Notes and recommendations
 
-**Be Through.** Especially when your type has optional fields, enum values, associations,
-etc., build as many records as needed, with different traits, so that all variations get exercised.
+**Be thorough.** Especially when your type has optional fields, enum values or
+associations, build as many records as needed, with different traits, so that
+all the variations get exercised.
 
 **Undeclared keys fail.** `ts-json-schema-generator` emits
 `additionalProperties: false`, so a payload carrying a key the TypeScript does
@@ -195,20 +198,23 @@ props type is an application change — give it its own commit.
 
 ## Cost
 
-Schema generation is cached, so that... this section is confusing, fix it...
-One `npx ts-json-schema-generator` invocation per **file** per suite run,
-cached by path — reading three types out of one `.ts` costs one parse, not
-three. The cache is per process, so parallel workers each pay it once.
+One `npx ts-json-schema-generator` run per source file. Generated schemas are
+cached in memory, keyed by the file and the generator arguments, so reading
+three types out of one `.ts` costs one run rather than three, and changing
+`TsSchemaSpec.configure` regenerates rather than serving a stale schema.
+
+The cache lives in the process, so parallel test workers each pay for it once.
 
 ## Troubleshooting
 
-| Symptom                                              | Cause                                                        |
-| ---------------------------------------------------- | ------------------------------------------------------------ |
-| `GenerationError: ... Is it exported?`               | the type has no `export`, or the name is misspelled           |
-| `GenerationError` listing a rerunnable command       | run it — the generator's own stderr is in the message         |
-| passes against an obviously wrong payload            | the type is all-optional, or an unresolved import became `{}` |
-| `could not run npx ts-json-schema-generator`         | the generator is not in your `node_modules`                   |
-| `disallowed additional property`                     | see above — the payload sends what TypeScript does not declare |
+| Symptom                                              | Cause                                                          |
+| ---------------------------------------------------- | -------------------------------------------------------------- |
+| `GenerationError: ... Is it exported?`               | the type has no `export`, or the name is misspelled             |
+| `GenerationError` listing a rerunnable command       | run it — the generator's own stderr is in the message           |
+| passes against an obviously wrong payload            | the type is all-optional, or an unresolved import became `{}`   |
+| `could not run npx ts-json-schema-generator`         | the generator is not in your `node_modules`                     |
+| `disallowed additional property`                     | see above — the payload sends what TypeScript does not declare  |
+| `has no data-react-props attribute`                  | hand-written markup, or a mount from another integration        |
 
 ## What this can't catch
 
@@ -229,7 +235,7 @@ associations need records built to hit them.
 
 ## Alternatives
 
-An alternate methodology is to generate Typescript types from ruby.
+An alternate methodology is to generate the TypeScript types from Ruby.
 
 [Typelizer](https://typelizer.dev/) and
 [types_from_serializers](https://github.com/ElMassimo/types_from_serializers)
@@ -248,9 +254,6 @@ committee, rswag — validates against a hand-maintained JSON Schema file. That
 is a third artifact to keep in sync with both sides, which is the same drift
 problem relocated.
 
-Even with generated types, `react_component` props stay uncovered: Typelizer
-types serializer output and knows nothing about the outer props object
-assembled in a view. That part is this gem's permanently.
-
-
-That part is this gem's permanently.??? what does that sentence even mean?
+One gap stays open whichever you pick: `react_component` props. Typelizer
+types serializer output and knows nothing about the outer props object a view
+assembles, so nothing generated from your serializers covers it.

@@ -50,18 +50,18 @@ missing.
 
 ## Step 3 — Tighten the type
 
-An all-optional type is satisfied by `{}`, so asserting on one passes while
-catching nothing — worse than no spec, because it reads as coverage.
+An all-optional type is satisfied by `{}`, so asserting on one asserts nothing.
 
 - A field the server always sends: **required**.
 - A field the server can send as null: `string | null`, not `string?`.
+- A field with a fixed set of values: a literal union (`"draft" | "published"`),
+  not `string`.
 - An index signature or `Record<string, unknown>`: keep the keys the component
-  actually reads **required alongside it**. Whatever it reads out of that bag
-  belongs in the type.
+  actually reads **required alongside it**.
 
-Tightening a props type edits application code rather than the test, so say
-that you did it. If it cannot be tightened now, report which fields are
-unconstrained rather than implying the spec covers them.
+This edits application code rather than the test, so say that you did it. If
+it cannot be tightened now, report which fields are unconstrained rather than
+implying the spec covers them.
 
 ## Step 4 — Write the test
 
@@ -95,13 +95,11 @@ end
 Name the file and type at the assertion. When several examples read the same
 source, bind the path to a constant or a let variable.
 
-Guidelines:
+Rules:
 
-- When appropriate, build multiple records with different traits, so optional
-  fields, enum values and nil associations are actually exercised. Use existing
-  factory traits where available.
-- Assert `response` is successful first, to catch redirects and error
-  responses rather than debugging them as schema failures.
+- Build multiple records with different traits, so optional fields, enum values
+  and nil associations are actually exercised. Use existing factory traits.
+- Assert `response` is successful before asserting shape.
 - Let `match_schema` do the shape checking; no hand-written field assertions.
 - Several components in one action: an example each, or one example marked
   `:aggregate_failures` if rendering the page is expensive — without it the
@@ -109,12 +107,24 @@ Guidelines:
 - Do not write a spec that only checks `response.status`, and do not duplicate
   an existing `match_schema` for the same action.
 - **When it fails, fix Rails.** The type is the consumer's contract: if the
-  component needs a field, the payload is wrong. Only loosen the type when the
-  component genuinely does not need what it declares — loosening is always the
-  quicker route to green, and it is how this stops catching anything.
+  component needs a field, the payload is wrong. Loosening the type is always
+  the quicker route to green, and it is how this stops catching anything.
 
 ## Step 5 — Run it
 
 ```
 bundle exec rspec spec/controllers/my_controller_spec.rb --example "MyComponent"
 ```
+
+## When a rule here does not fit
+
+The gem's README carries the reasoning behind these rules, plus troubleshooting
+for generator errors. It ships inside the gem, so this reads the version the
+app actually has:
+
+```
+cat "$(bundle show ts_schema_spec)/README.md"
+```
+
+Sections: **Best practices**, **Gotchas**, **Troubleshooting**. If the command
+fails, carry on — the rules above stand on their own.

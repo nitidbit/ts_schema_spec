@@ -179,11 +179,47 @@ Payload was:
 }
 ```
 
-## Notes and recommendations
+## Best practices
 
-**Be thorough.** Especially when your type has optional fields, enum values or
-associations, build as many records as needed, with different traits, so that
-all the variations get exercised.
+**Build records that cover the variations.** One response only exercises the
+branches it took. When the type has optional fields, enum values or nullable
+associations, create as many records, with as many different traits, as it
+takes to put those branches in the payload.
+
+**Tighten the type first.** An all-optional type is satisfied by `{}`, so
+asserting against one passes while catching nothing — worse than no spec,
+because it reads as coverage. A field the server always sends should be
+required; a field that can be null should be `string | null` rather than
+`string?`; and keys the component reads out of an index signature or
+`Record<string, unknown>` should be declared required alongside it. Tightening
+a props type is an application change — give it its own commit.
+
+**Use the strongest type available.** `status: string` accepts anything;
+`status: "draft" | "published"` catches both a typo and a value the consumer
+was never taught about. Prefer a literal union over `string`, and a declared
+shape over `Record<string, unknown>`. A union like that only stays honest if
+it tracks the Ruby enum it mirrors, which needs some way of sharing constants
+from Ruby into TypeScript — a generator, a shared JSON file, whatever suits
+your repo. That is outside this gem's scope, but with one in place, and a
+record for each value in the example, a drifted union fails here rather than
+in the browser.
+
+**Pass the whole collection.** `match_schema` validates every item and fails
+on an empty one. `expect(props).to all match_schema(...)` iterates zero times
+on an empty array and asserts nothing.
+
+**Assert the response is successful first.** Otherwise a redirect or a 500
+arrives as a schema failure, and you debug the wrong thing.
+
+**Let the matcher do the shape checking.** Hand-written field assertions
+alongside it duplicate what the type already says, and go stale separately.
+
+**When it fails, fix Rails.** The type is the consumer's contract: if the
+component needs a field, the payload is wrong. Loosen the type only when the
+component genuinely does not need what it declares — loosening is always the
+quicker route to green, and it is how this stops catching anything.
+
+## Gotchas
 
 **Undeclared keys fail.** `ts-json-schema-generator` emits
 `additionalProperties: false`, so a payload carrying a key the TypeScript does
@@ -191,12 +227,6 @@ not declare is an error, not a warning. That is deliberate — it catches Rails
 sending something nobody typed — but expect it when an `as_json` emits
 timestamps the React side ignores. Fix by declaring the field or narrowing the
 `only:`.
-
-**An all-optional type asserts almost nothing.** A schema is only as strong as
-the type it comes from; `shortcode?: string` passes whether the key is there
-or not. If the server always sends a field, make it required, and use
-`string | null` rather than `?` for a field that can be null. Tightening a
-props type is an application change — give it its own commit.
 
 ## Cost
 
@@ -230,10 +260,6 @@ the skill is for, and it is convention rather than enforcement.
 nobody typed — say `as_json(only:)` carrying a misspelled attribute, which
 Rails drops silently — no generated schema requires it, so nothing fails. A
 structured serializer catches that class of mistake; this does not.
-
-**One payload shape per example.** A single response only exercises the
-branches it took. Nullable fields, empty collections and conditional
-associations need records built to hit them.
 
 ## Alternatives
 

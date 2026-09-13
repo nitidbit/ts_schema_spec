@@ -46,6 +46,13 @@ RSpec.describe TsSchemaSpec::Skill do
       .to raise_error(TsSchemaSpec::Error, /rake ts_schema_spec:install_skill/)
   end
 
+  it "refuses to install a copy it cannot stamp" do
+    allow(File).to receive(:read).and_call_original
+    allow(File).to receive(:read).with(TsSchemaSpec::Skill::SOURCE_PATH).and_return("no frontmatter here\n")
+
+    expect { described_class.install(root) }.to raise_error(TsSchemaSpec::Error, /frontmatter/)
+  end
+
   it "fails the staleness check when the skill was never installed" do
     expect { described_class.check!(root) }
       .to raise_error(TsSchemaSpec::Error, /rake ts_schema_spec:install_skill/)

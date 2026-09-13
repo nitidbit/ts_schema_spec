@@ -45,7 +45,13 @@ module TsSchemaSpec
 
       def stamped(contents)
         body = contents.sub(/^#{STAMP}: .*\n/, "")
-        body.sub(/\A---\n/, "---\n#{STAMP}: #{TsSchemaSpec::VERSION}\n")
+        stamped = body.sub(/\A---\n/, "---\n#{STAMP}: #{TsSchemaSpec::VERSION}\n")
+
+        if stamped == body
+          raise Error, "#{SOURCE_PATH} does not open with YAML frontmatter, so the version stamp check! reads has nowhere to go."
+        end
+
+        stamped
       end
     end
   end

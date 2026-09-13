@@ -64,7 +64,7 @@ module TsSchemaSpec
     end
 
     def document_for(source)
-      documents[File.expand_path(source.to_s)] ||= Generator.generate(source)
+      documents[[File.expand_path(source.to_s), config.to_args]] ||= Generator.generate(source)
     end
 
     def documents

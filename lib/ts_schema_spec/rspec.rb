@@ -14,6 +14,8 @@ module TsSchemaSpec
   module Matching
     EMPTY = :empty_collection
 
+    BRANCHES = %w[anyOf oneOf allOf].freeze
+
     class << self
       def errors(schema, actual)
         return schema.validate(actual).to_a unless collection?(schema, actual)
@@ -26,39 +28,75 @@ module TsSchemaSpec
         end
       end
 
+      def empty?(errors)
+        errors == [EMPTY]
+      end
+
       private
 
       def collection?(schema, actual)
         actual.is_a?(Array) && !describes_array?(schema)
       end
 
-      def describes_array?(schema)
-        type = schema.value["type"]
-        type == "array" || (type.is_a?(Array) && type.include?("array"))
+      # A type can reach "array" through a union or an alias, so the literal
+      # `"type"` of the schema is not enough: `Role[] | null` and
+      # `type Roles = RoleList` both describe an array without saying so here.
+      def describes_array?(schema, value = schema.value, seen = [])
+        return false unless value.is_a?(Hash)
+
+        if (pointer = value["$ref"])
+          return false if seen.include?(pointer)
+
+          return describes_array?(schema, resolve(schema, pointer), seen + [pointer])
+        end
+
+        return true if Array(value["type"]).include?("array")
+
+        BRANCHES.any? do |branch|
+          Array(value[branch]).any? { |option| describes_array?(schema, option, seen) }
+        end
+      end
+
+      def resolve(schema, pointer)
+        schema.ref(pointer).value
+      rescue StandardError
+        nil
       end
     end
   end
 end
 
 RSpec::Matchers.define :match_schema do |source, type|
-  match do |actual|
+  def validate(actual, source, type)
     schema = TsSchemaSpec.schema_for(source, type)
     @errors = TsSchemaSpec::Matching.errors(schema, actual)
-    @errors.empty?
+  end
+
+  def empty_collection_message
+    <<~MSG
+      expected a non-empty collection to match the schema, but it was empty,
+      so nothing was validated.
+
+      Usually the component was not rendered on the page, or no records
+      existed for the endpoint to serialize. If an empty result is what you
+      meant to assert, use `be_empty` or `eq([])` — match_schema on an empty
+      collection checks nothing.
+    MSG
+  end
+
+  match do |actual|
+    validate(actual, source, type).empty?
+  end
+
+  # An empty collection fails either way round: negating the matcher would
+  # otherwise turn the vacuous pass back on.
+  match_when_negated do |actual|
+    errors = validate(actual, source, type)
+    errors.any? && !TsSchemaSpec::Matching.empty?(errors)
   end
 
   failure_message do |actual|
-    if @errors == [TsSchemaSpec::Matching::EMPTY]
-      next <<~MSG
-        expected a non-empty collection to match the schema, but it was empty,
-        so nothing was validated.
-
-        Usually the component was not rendered on the page, or no records
-        existed for the endpoint to serialize. If an empty result is what you
-        meant to assert, use `be_empty` or `eq([])` — match_schema on an empty
-        collection checks nothing.
-      MSG
-    end
+    next empty_collection_message if TsSchemaSpec::Matching.empty?(@errors)
 
     details = @errors.map do |error|
       pointer = error["data_pointer"]
@@ -76,6 +114,8 @@ RSpec::Matchers.define :match_schema do |source, type|
   end
 
   failure_message_when_negated do |actual|
+    next empty_collection_message if TsSchemaSpec::Matching.empty?(@errors)
+
     "expected the payload not to match #{type} (#{source}), but it did:\n#{JSON.pretty_generate(actual)}"
   end
 end

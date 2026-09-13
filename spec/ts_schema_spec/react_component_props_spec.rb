@@ -26,6 +26,15 @@ RSpec.describe TsSchemaSpec::ReactComponentProps do
     expect(react_component_props("Absent", html)).to eq([])
   end
 
+  it "matches a dot-namespaced react class by its trailing segment" do
+    expect(react_component_props("AccountBadge", html).length).to eq(1)
+  end
+
+  it "says so when a mount carries no props attribute" do
+    expect { react_component_props("Bare", html) }
+      .to raise_error(TsSchemaSpec::Error, /no data-react-props/)
+  end
+
   it "raises when a mount's props are not parseable" do
     broken = '<div data-react-class="RoleMatrix" data-react-props="{oops"></div>'
 

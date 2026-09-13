@@ -29,9 +29,11 @@ module TsSchemaSpec
 
       private
 
-      MISSING_PACKAGE = /missing packages|could not determine executable|not found/i
+      # npx's own phrasing for "the package is not installed". Anything looser
+      # — a bare "not found" — swallows the generator's real diagnostic.
+      MISSING_PACKAGE = /missing packages|could not determine executable|npx.*not found|not found.*npx/i
 
-      def missing_generator(command)
+      def missing_generator(command, stderr = nil)
         <<~MSG
           could not run #{COMMAND.join(" ")}.
 
@@ -41,11 +43,12 @@ module TsSchemaSpec
             npm install --save-dev ts-json-schema-generator
 
           Rerun: #{command.join(" ")}
+          #{stderr.to_s.strip}
         MSG
       end
 
       def failure(command, stderr)
-        return missing_generator(command) if stderr.to_s.match?(MISSING_PACKAGE)
+        return missing_generator(command, stderr) if stderr.to_s.match?(MISSING_PACKAGE)
 
         <<~MSG
           ts-json-schema-generator failed.

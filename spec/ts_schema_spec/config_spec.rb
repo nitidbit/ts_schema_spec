@@ -42,4 +42,12 @@ RSpec.describe "TsSchemaSpec.configure" do
       .to change { TsSchemaSpec.schema_for(aliased("widget.ts"), "AliasedWidgetProps").valid?({ "label" => "x", "role" => 1 }) }
       .from(true).to(false)
   end
+
+  it "picks up a setting written straight onto the config, not only through configure" do
+    TsSchemaSpec.schema_for(aliased("widget.ts"), "AliasedWidgetProps")
+
+    expect { TsSchemaSpec.config.tsconfig = aliased("tsconfig.json") }
+      .to change { TsSchemaSpec.schema_for(aliased("widget.ts"), "AliasedWidgetProps").valid?({ "label" => "x", "role" => 1 }) }
+      .from(true).to(false)
+  end
 end

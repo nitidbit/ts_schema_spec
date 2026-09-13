@@ -43,4 +43,22 @@ RSpec.describe "match_schema with a collection" do
   it "still handles a single object" do
     expect(role).to match_schema(source, "Role")
   end
+
+  it "validates the array itself when the schema is an array in a union" do
+    expect([role]).to match_schema(source, "MaybeRoles")
+  end
+
+  it "fails a union-typed array whose items do not match" do
+    expect([role.merge("id" => "2")]).to_not match_schema(source, "MaybeRoles")
+  end
+
+  it "validates the array itself when the schema is a $ref to an array" do
+    expect([role]).to match_schema(source, "AliasedRoleList")
+  end
+
+  it "fails a negated assertion on an empty collection rather than passing vacuously" do
+    expect {
+      expect([]).to_not match_schema(source, "Role")
+    }.to raise_error(RSpec::Expectations::ExpectationNotMetError, /empty/)
+  end
 end

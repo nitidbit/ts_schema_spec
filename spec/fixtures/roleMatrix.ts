@@ -15,3 +15,7 @@ interface NotExported {
 }
 
 export type RoleList = Role[];
+
+export type MaybeRoles = Role[] | null;
+
+export type AliasedRoleList = RoleList;

@@ -80,7 +80,7 @@ describe "the props handed to MyComponent" do
   render_views
 
   it "matches MyComponentProps" do
-    create(:factory_name, trait_a: true)
+    record = create(:factory_name, trait_a: true)
     create(:factory_name, :some_trait)
 
     get :show, params: { id: record.id }

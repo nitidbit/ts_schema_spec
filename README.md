@@ -20,7 +20,7 @@ reads props out of rendered mounts, is React-specific.
 
 ```ruby
 # Gemfile
-gem "ts_schema_spec", github: "nitidbit/ts_schema_spec", tag: "v0.1.0", group: :test
+gem "ts_schema_spec", github: "nitidbit/ts_schema_spec", tag: "v0.5.0", group: :test
 ```
 
 Pin the tag. Without one, Bundler follows the default branch, and
@@ -118,7 +118,9 @@ returns **an array** — one entry per mount of that component on the page. It
 needs `render_views`.
 
 It assumes [react-rails](https://github.com/reactjs/react-rails) conventions —
-`data-react-class` and `data-react-props` on the mount element. Other
+`data-react-class` and `data-react-props` on the mount element. A namespaced
+class matches on its trailing segment, so `admin/SidebarNav` and
+`Admin.SidebarNav` both answer to `"SidebarNav"`. Other
 integrations mount differently (react_on_rails uses its own attributes), and
 against those it finds nothing and reports an empty collection rather than a
 missing-attribute error. Supporting another convention is a small change to one
@@ -131,7 +133,7 @@ describe "the props handed to RoleMatrix" do
   role_matrix = "app/javascript/components/roles/RoleMatrix.tsx"
 
   it "matches RoleMatrixProps" do
-    create(:account, :with_roles)
+    account = create(:account, :with_roles)
     create(:account, :unassigned)
 
     get :show, params: { id: account.id }
@@ -144,9 +146,10 @@ end
 ```
 
 Pass the whole array. `match_schema` validates every item and fails on an
-empty collection, so a page that stopped rendering the component fails rather
-than passing vacuously — don't reach for `all`, which iterates zero times and
-asserts nothing. Build two or three records with different traits so optional
+empty collection — either way round, so `to_not match_schema` does not hand
+the vacuous pass back. A page that stopped rendering the component fails
+rather than passing silently; don't reach for `all`, which iterates zero times
+and asserts nothing. Build two or three records with different traits so optional
 fields, enum values and nil associations actually get exercised — one response
 only covers the branches that response took.
 
@@ -173,7 +176,7 @@ examples costs one `npx` run.
 ## What a failure looks like
 
 ```
-expected the payload to match the schema, but:
+expected the payload to match Role (app/javascript/types/role.ts), but:
  - /id: value at `/id` is not a number
  - /created_at: object property at `/created_at` is a disallowed additional property
  - (root): object at root is missing required properties: shortcode

@@ -67,15 +67,17 @@ module TsSchemaSpec
 end
 
 RSpec::Matchers.define :match_schema do |source, type|
-  def validate(actual, source, type)
+  def validation_errors(actual, source, type)
     schema = TsSchemaSpec.schema_for(source, type)
     @errors = TsSchemaSpec::Matching.errors(schema, actual)
   end
 
+  # Worded for both directions: this message is what an empty collection gets
+  # whichever way the assertion was written.
   def empty_collection_message
     <<~MSG
-      expected a non-empty collection to match the schema, but it was empty,
-      so nothing was validated.
+      expected a non-empty collection, but it was empty, so nothing was
+      validated.
 
       Usually the component was not rendered on the page, or no records
       existed for the endpoint to serialize. If an empty result is what you
@@ -85,13 +87,13 @@ RSpec::Matchers.define :match_schema do |source, type|
   end
 
   match do |actual|
-    validate(actual, source, type).empty?
+    validation_errors(actual, source, type).empty?
   end
 
   # An empty collection fails either way round: negating the matcher would
   # otherwise turn the vacuous pass back on.
   match_when_negated do |actual|
-    errors = validate(actual, source, type)
+    errors = validation_errors(actual, source, type)
     errors.any? && !TsSchemaSpec::Matching.empty?(errors)
   end
 

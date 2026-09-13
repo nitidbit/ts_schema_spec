@@ -48,7 +48,11 @@ module TsSchemaSpec
         stamped = body.sub(/\A---\n/, "---\n#{STAMP}: #{TsSchemaSpec::VERSION}\n")
 
         if stamped == body
-          raise Error, "#{SOURCE_PATH} does not open with YAML frontmatter, so the version stamp check! reads has nowhere to go."
+          raise Error, <<~MSG
+            #{SOURCE_PATH} does not open with YAML frontmatter, so there is
+            nowhere to put the version stamp that check! reads. Installing it
+            unstamped would fail that check for good.
+          MSG
         end
 
         stamped

@@ -34,7 +34,7 @@ module TsSchemaSpec
       MISSING_PACKAGE = /missing packages|could not determine executable|npx.*not found|not found.*npx/i
 
       def missing_generator(command, stderr = nil)
-        <<~MSG
+        message = <<~MSG
           could not run #{COMMAND.join(" ")}.
 
           The generator parses your app's TypeScript, so it resolves from your
@@ -43,8 +43,10 @@ module TsSchemaSpec
             npm install --save-dev ts-json-schema-generator
 
           Rerun: #{command.join(" ")}
-          #{stderr.to_s.strip}
         MSG
+        return message if stderr.to_s.strip.empty?
+
+        "#{message}\n#{stderr.strip}\n"
       end
 
       def failure(command, stderr)

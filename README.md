@@ -20,7 +20,7 @@ reads props out of rendered mounts, is React-specific.
 
 ```ruby
 # Gemfile
-gem "ts_schema_spec", github: "nitidbit/ts_schema_spec", tag: "v0.5.0", group: :test
+gem "ts_schema_spec", github: "nitidbit/ts_schema_spec", tag: "v0.5.1", group: :test
 ```
 
 Pin the tag. Without one, Bundler follows the default branch, and

@@ -90,13 +90,15 @@ end
 ### A JSON endpoint
 
 ```ruby
-ACCOUNT_TS = "app/javascript/types/account.ts"
-
 it "matches AccountPayload" do
+  create(:account, :with_roles)
+  create(:account, :unassigned)
+
   get :index, format: :json
 
   expect(response).to be_successful
-  expect(response.parsed_body["accounts"]).to match_schema(ACCOUNT_TS, "AccountPayload")
+  expect(response.parsed_body["accounts"])
+    .to match_schema("app/javascript/types/account.ts", "AccountPayload")
 end
 ```
 
@@ -124,7 +126,6 @@ describe "the props handed to RoleMatrix" do
 
   it "matches RoleMatrixProps" do
     account = create(:account, :with_roles)
-    create(:account, :unassigned)
 
     get :show, params: { id: account.id }
 
@@ -155,8 +156,9 @@ array.
 
 `path` is resolved from wherever the suite runs, which is the Rails root in
 practice. Name the type at the assertion, so an example says which type it is
-checking. When several examples read the same source, bind the path to a
-constant.
+checking. When several examples read the same source, bind the path to a local
+variable or a `let` — a constant assigned inside a `describe` block is global,
+so two spec files that both use one will collide.
 
 `schema_for` stays public, but is not needed when using the RSpec matcher,
 which calls it internally.

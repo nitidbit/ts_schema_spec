@@ -1,5 +1,5 @@
 ---
-name: react-prop-type-spec
+name: ts-schema-spec
 description: >
   Write or update RSpec tests that use match_schema to verify a Rails
   endpoint's payload matches the TypeScript type that consumes it. TRIGGER
@@ -11,7 +11,7 @@ description: >
   to .tsx; deleting a component's propTypes; or rendering an already-typed
   component from an action that has no match_schema spec. React is the common
   case, not a requirement — a Stimulus controller or a plain fetch client
-  reading the payload counts the same. Invoked as /react-prop-type-spec.
+  reading the payload counts the same. Invoked as /ts-schema-spec.
 ---
 
 A spec is owed any time data is handed from Ruby to TypeScript — not only when

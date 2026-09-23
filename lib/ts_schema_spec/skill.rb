@@ -9,7 +9,7 @@ module TsSchemaSpec
   # silently outdated copy teaches the wrong API. The copy carries the gem
   # version and `check!` fails when the two diverge.
   module Skill
-    NAME = "react-prop-type-spec"
+    NAME = "ts-schema-spec"
     INSTALL_PATH = ".claude/skills/#{NAME}/SKILL.md"
     SOURCE_PATH = File.expand_path("../../skills/#{NAME}/SKILL.md", __dir__)
     STAMP = "ts_schema_spec_version"

@@ -75,7 +75,7 @@ RAILS_ENV=test bundle exec rake ts_schema_spec:install_skill
 
 `RAILS_ENV=test` is required when the gem is in `group: :test`, as above.
 
-It lands in `.claude/skills/react-prop-type-spec/SKILL.md`, stamped with the
+It lands in `.claude/skills/ts-schema-spec/SKILL.md`, stamped with the
 gem version. To keep the skill in sync with the gem version:
 
 ```ruby
@@ -84,6 +84,9 @@ it "has the skill matching the installed gem" do
   expect { TsSchemaSpec::Skill.check!(Rails.root) }.to_not raise_error
 end
 ```
+
+Versions up to 0.5.4 named the skill `react-prop-type-spec`. After reinstalling,
+delete `.claude/skills/react-prop-type-spec/`.
 
 ## Use
 

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 namespace :ts_schema_spec do
-  desc "Copy the react-prop-type-spec agent skill into .claude/skills"
+  desc "Copy the ts-schema-spec agent skill into .claude/skills"
   task :install_skill do
     require "ts_schema_spec/skill"
 

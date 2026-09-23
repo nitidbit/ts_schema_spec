@@ -15,7 +15,7 @@ RSpec.describe TsSchemaSpec::Skill do
   it "installs the skill into the consumer's .claude/skills" do
     described_class.install(root)
 
-    expect(installed).to include("name: react-prop-type-spec")
+    expect(installed).to include("name: ts-schema-spec")
   end
 
   it "stamps the gem version into the installed copy" do

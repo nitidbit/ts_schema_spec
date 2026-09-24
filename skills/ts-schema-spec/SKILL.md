@@ -79,6 +79,8 @@ times on an empty array and asserts nothing.
 describe "the props handed to MyComponent" do
   render_views
 
+  my_component = "app/javascript/MyComponent.tsx"
+
   it "matches MyComponentProps" do
     record = create(:factory_name, trait_a: true)
     create(:factory_name, :some_trait)
@@ -87,13 +89,14 @@ describe "the props handed to MyComponent" do
 
     expect(response).to be_successful
     props = react_component_props("MyComponent")
-    expect(props).to match_ts_schema("app/javascript/MyComponent.tsx", "MyComponentProps")
+    expect(props).to match_ts_schema(my_component, "MyComponentProps")
   end
 end
 ```
 
-Name the file and type at the assertion. When several examples read the same
-source, bind the path to a constant or a let variable.
+Name the file and type at the assertion. Bind the path to a local variable or a
+`let`, not a constant: a constant assigned inside a `describe` block is global
+and collides between spec files.
 
 Rules:
 

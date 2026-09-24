@@ -1,4 +1,4 @@
 export interface AliasedRole {
-  id: number;
-  name: string;
+  id: number
+  name: string
 }

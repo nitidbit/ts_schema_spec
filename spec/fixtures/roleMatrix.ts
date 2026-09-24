@@ -1,21 +1,21 @@
 export interface RoleMatrixProps {
-  roles: Role[];
-  assignedEntity: string;
-  reviewMode: boolean;
+  roles: Role[]
+  assignedEntity: string
+  reviewMode: boolean
 }
 
 export interface Role {
-  id: number;
-  name: string;
-  shortcode: string | null;
+  id: number
+  name: string
+  shortcode: string | null
 }
 
 interface NotExported {
-  hidden: boolean;
+  hidden: boolean
 }
 
-export type RoleList = Role[];
+export type RoleList = Role[]
 
-export type MaybeRoles = Role[] | null;
+export type MaybeRoles = Role[] | null
 
-export type AliasedRoleList = RoleList;
+export type AliasedRoleList = RoleList

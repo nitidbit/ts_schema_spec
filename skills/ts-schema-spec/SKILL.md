@@ -65,9 +65,9 @@ implying the spec covers them.
 
 ## Step 4 — Write the test
 
-| Action | Data source |
-| ------ | ----------- |
-| `render json:` | `response.parsed_body["key"]` |
+| Action            | Data source                              |
+| ----------------- | ---------------------------------------- |
+| `render json:`    | `response.parsed_body["key"]`            |
 | `react_component` | `react_component_props("ComponentName")` |
 
 `react_component_props` returns **an array**, one entry per mount, and needs

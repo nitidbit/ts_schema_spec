@@ -1,0 +1,22 @@
+# Configuration for gPush -- https://github.com/nitidbit/gpush
+
+gpush_version: '>=2.16.0'
+
+fix:
+  - shell: npm run prettier:write
+
+parallel_run:
+  - name: prettier
+    shell: npm run prettier
+
+  - name: rspec
+    shell: bundle exec rspec
+
+  - name: uncommitted git changes
+    shell: git status && test -z "$(git status --porcelain)"
+
+  - name: claude code review
+    shell: gpush claude-review --mode=code
+
+  - name: claude security review
+    shell: gpush claude-review --mode=security

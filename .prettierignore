@@ -1,0 +1,3 @@
+.claude/
+# Mirrors real Rails output, including &quot; entity escaping
+spec/fixtures/rendered.html

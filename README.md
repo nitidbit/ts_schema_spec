@@ -8,7 +8,7 @@ Built for RSpec, but could be ported to other test frameworks (Minitest, etc.).
 `react_component_props`, an optional React-specific helper, reads props out of
 rendered mounts.
 
-React is the case this gem was built for, not a requirement. `match_schema`
+React is the case this gem was built for, not a requirement. `match_ts_schema`
 checks any payload against any exported TypeScript type, so a Stimulus
 controller or a plain fetch client works the same way.
 
@@ -101,7 +101,7 @@ it "matches AccountPayload" do
 
   expect(response).to be_successful
   expect(response.parsed_body["accounts"])
-    .to match_schema("app/javascript/types/account.ts", "AccountPayload")
+    .to match_ts_schema("app/javascript/types/account.ts", "AccountPayload")
 end
 ```
 
@@ -134,28 +134,31 @@ describe "the props handed to RoleMatrix" do
 
     expect(response).to be_successful
     props = react_component_props("RoleMatrix")
-    expect(props).to match_schema(role_matrix, "RoleMatrixProps")
+    expect(props).to match_ts_schema(role_matrix, "RoleMatrixProps")
   end
 end
 ```
 
-`match_schema` accepts a hash or an array of hashes. Given an array, it
+`match_ts_schema` accepts a hash or an array of hashes. Given an array, it
 validates every item and fails on an empty one — in both directions, so
-`to_not match_schema` does not pass vacuously either. A page that stopped
+`to_not match_ts_schema` does not pass vacuously either. A page that stopped
 rendering the component fails rather than passing silently. The alternative
-construction, `expect(props).to all match_schema(...)`, would pass on an empty
-array.
+construction, `expect(props).to all match_ts_schema(...)`, would pass on an
+empty array.
 
 ## API
 
 | Call                                    | Returns                                                     |
 | --------------------------------------- | ----------------------------------------------------------- |
 | `TsSchemaSpec.schema_for(path, type)`   | a `JSONSchemer` schema scoped to that exported type          |
-| `match_schema(path, type)`              | matcher; validates a hash, or every item of an array         |
+| `match_ts_schema(path, type)`           | matcher; validates a hash, or every item of an array         |
 | `react_component_props(name[, html])`   | array of props hashes, one per mount                         |
 | `TsSchemaSpec::Skill.check!(root)`      | raises if the installed skill is stale or missing            |
 | `TsSchemaSpec.configure`                | sets `tsconfig` and extra generator arguments                |
 | `TsSchemaSpec.clear_cache!`             | drops the generated-schema cache                             |
+
+`match_ts_schema` was called `match_schema` before 0.6.1. The old name still
+works but is deprecated and will be removed.
 
 `path` is resolved from wherever the suite runs, which is the Rails root in
 practice. Name the type at the assertion, so an example says which type it is
@@ -208,8 +211,8 @@ generator, a shared JSON file, whatever suits your repo. That is outside this
 gem's scope, but with one in place, and a record for each value in the
 example, a drifted union fails here rather than in the browser.
 
-**Pass the whole collection.** `match_schema` validates every item and fails
-on an empty one. Avoid `expect(props).to all match_schema(...)`, which
+**Pass the whole collection.** `match_ts_schema` validates every item and fails
+on an empty one. Avoid `expect(props).to all match_ts_schema(...)`, which
 passes on an empty array, hiding an issue with generation.
 
 **Assert the response is successful first.** Otherwise a redirect or a 500

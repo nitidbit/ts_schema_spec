@@ -66,7 +66,7 @@ module TsSchemaSpec
   end
 end
 
-RSpec::Matchers.define :match_schema do |source, type|
+RSpec::Matchers.define :match_ts_schema do |source, type|
   def validation_errors(actual, source, type)
     schema = TsSchemaSpec.schema_for(source, type)
     @errors = TsSchemaSpec::Matching.errors(schema, actual)
@@ -81,7 +81,7 @@ RSpec::Matchers.define :match_schema do |source, type|
 
       Usually the component was not rendered on the page, or no records
       existed for the endpoint to serialize. If an empty result is what you
-      meant to assert, use `be_empty` or `eq([])` — match_schema on an empty
+      meant to assert, use `be_empty` or `eq([])` — match_ts_schema on an empty
       collection checks nothing.
     MSG
   end
@@ -119,5 +119,14 @@ RSpec::Matchers.define :match_schema do |source, type|
     next empty_collection_message if TsSchemaSpec::Matching.empty?(@errors)
 
     "expected the payload not to match #{type} (#{source}), but it did:\n#{JSON.pretty_generate(actual)}"
+  end
+end
+
+module RSpec
+  module Matchers
+    def match_schema(...)
+      RSpec.deprecate("match_schema", replacement: "match_ts_schema")
+      match_ts_schema(...)
+    end
   end
 end

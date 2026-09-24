@@ -1,7 +1,7 @@
 ---
 name: ts-schema-spec
 description: >
-  Write or update RSpec tests that use match_schema to verify a Rails
+  Write or update RSpec tests that use match_ts_schema to verify a Rails
   endpoint's payload matches the TypeScript type that consumes it. TRIGGER
   automatically (without being asked) whenever data crossing from Ruby to
   TypeScript is added or changed: adding a controller action; changing
@@ -9,7 +9,7 @@ description: >
   associations); adding or renaming a key in a render json: response or in
   props handed to a component; converting a Rails-mounted component from .jsx
   to .tsx; deleting a component's propTypes; or rendering an already-typed
-  component from an action that has no match_schema spec. React is the common
+  component from an action that has no match_ts_schema spec. React is the common
   case, not a requirement — a Stimulus controller or a plain fetch client
   reading the payload counts the same. Invoked as /ts-schema-spec.
 ---
@@ -19,15 +19,15 @@ something changes, and including where there is no Ruby diff at all. Two rules
 keep that from multiplying:
 
 - **Repeated mounts of one component are a single example.**
-  `react_component_props` returns every mount and `match_schema` checks each.
+  `react_component_props` returns every mount and `match_ts_schema` checks each.
 - **Assert on the component Rails mounts.** A child receiving props from its
   parent is covered transitively; use the parent's props type.
 
 ## Step 0 — Already covered?
 
-Covered = the spec for **the action rendering it** has a `match_schema` example
-on that component. A sibling component, or the same component from another
-action, is not coverage. Covered → stop.
+Covered = the spec for **the action rendering it** has a `match_ts_schema`
+example on that component. A sibling component, or the same component from
+another action, is not coverage. Covered → stop.
 
 ## Step 1 — Find the TypeScript consumer
 
@@ -71,7 +71,7 @@ implying the spec covers them.
 | `react_component` | `react_component_props("ComponentName")` |
 
 `react_component_props` returns **an array**, one entry per mount, and needs
-`render_views`. Pass it straight to `match_schema`: it validates every entry
+`render_views`. Pass it straight to `match_ts_schema`: it validates every entry
 and fails on an empty collection. Never wrap it in `all`, which iterates zero
 times on an empty array and asserts nothing.
 
@@ -87,7 +87,7 @@ describe "the props handed to MyComponent" do
 
     expect(response).to be_successful
     props = react_component_props("MyComponent")
-    expect(props).to match_schema("app/javascript/MyComponent.tsx", "MyComponentProps")
+    expect(props).to match_ts_schema("app/javascript/MyComponent.tsx", "MyComponentProps")
   end
 end
 ```
@@ -100,12 +100,12 @@ Rules:
 - Build multiple records with different traits, so optional fields, enum values
   and nil associations are actually exercised. Use existing factory traits.
 - Assert `response` is successful before asserting shape.
-- Let `match_schema` do the shape checking; no hand-written field assertions.
+- Let `match_ts_schema` do the shape checking; no hand-written field assertions.
 - Several components in one action: an example each, or one example marked
   `:aggregate_failures` if rendering the page is expensive — without it the
   first mismatch hides the rest.
 - Do not write a spec that only checks `response.status`, and do not duplicate
-  an existing `match_schema` for the same action.
+  an existing `match_ts_schema` for the same action.
 - **When it fails, fix Rails.** The type is the consumer's contract: if the
   component needs a field, the payload is wrong. Loosening the type is always
   the quicker route to green, and it is how this stops catching anything.

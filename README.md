@@ -16,7 +16,7 @@ controller or a plain fetch client works the same way.
 
 ```ruby
 # Gemfile
-gem "ts_schema_spec", github: "nitidbit/ts_schema_spec", tag: "v0.5.3", group: :test
+gem "ts_schema_spec", group: :test
 ```
 
 This gem requires ts-json-schema-generator, resolved from your project's

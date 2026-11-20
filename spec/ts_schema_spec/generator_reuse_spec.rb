@@ -262,6 +262,24 @@ RSpec.describe TsSchemaSpec::Generator, "across many sources" do
     Encoding.default_external = default
   end
 
+  it "sends a path that is valid UTF-8 whatever its string is tagged as" do
+    Dir.mktmpdir do |dir|
+      path = "#{dir}/café.ts"
+      File.write(path, "export interface Cafe { x: string }\n")
+
+      expect(described_class.generate(path.b)["definitions"]).to include("Cafe")
+    end
+  end
+
+  it "converts a path in another encoding to UTF-8" do
+    Dir.mktmpdir do |dir|
+      path = "#{dir}/café.ts"
+      File.write(path, "export interface Cafe { x: string }\n")
+
+      expect(described_class.generate(path.encode(Encoding::ISO_8859_1))["definitions"]).to include("Cafe")
+    end
+  end
+
   it "uses the current directory's node_modules, not those of the directory node started in" do
     described_class.generate(fixture("roleMatrix.ts"))
 

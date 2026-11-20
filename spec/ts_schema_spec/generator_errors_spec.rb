@@ -221,6 +221,14 @@ RSpec.describe TsSchemaSpec::Generator do
     expect(Open3).to have_received(:popen3).once
   end
 
+  it "reports node's own error for a path given as binary" do
+    allow(described_class).to receive(:request)
+      .and_return("status" => 1, "stdout" => "", "stderr" => "error in café.ts")
+
+    expect { described_class.generate("/proj/café.ts".b) }
+      .to raise_error(TsSchemaSpec::GenerationError, /Rerun: .*café\.ts.*error in café\.ts/m)
+  end
+
   it "still generates after a failure" do
     expect { described_class.generate(fixture("missing.ts")) }.to raise_error(TsSchemaSpec::GenerationError)
 

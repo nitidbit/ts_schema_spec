@@ -27,7 +27,14 @@ module TsSchemaSpec
     class << self
       def generate(source)
         command = command_for(source)
-        reply = request(encode(command.drop(COMMAND.size)))
+        begin
+          command = command.map { |arg| to_utf8(arg) }
+          request_line = encode(command.drop(COMMAND.size))
+        rescue JSON::GeneratorError, EncodingError => e
+          readable = command.map { |arg| readable(arg) }
+          raise GenerationError, failure(readable, "every argument must be convertible to UTF-8: #{e.message}")
+        end
+        reply = request(request_line)
 
         unless reply["status"].zero?
           raise GenerationError, failure(command, reply["stderr"])
@@ -38,8 +45,6 @@ module TsSchemaSpec
         raise GenerationError, failure(command, "#{e.message}\n\n#{reply&.fetch("stderr", nil)}")
       rescue ServerExit, Errno::ENOENT => e
         raise GenerationError, failure(command, e.message)
-      rescue JSON::GeneratorError => e
-        raise GenerationError, failure(command.map { |arg| arg.to_s.dup.force_encoding(Encoding::UTF_8).scrub }, "every argument must be valid UTF-8: #{e.message}")
       end
 
       def command_for(source)
@@ -71,6 +76,20 @@ module TsSchemaSpec
 
       # node's readline also ends a line at U+2028 and U+2029, which JSON
       # leaves unescaped.
+      def to_utf8(arg)
+        arg = arg.to_s
+        # Binary and US-ASCII label bytes without saying what they encode.
+        return arg.dup.force_encoding(Encoding::UTF_8) if [Encoding::BINARY, Encoding::US_ASCII].include?(arg.encoding)
+
+        arg.encode(Encoding::UTF_8)
+      end
+
+      def readable(arg)
+        to_utf8(arg).scrub
+      rescue EncodingError
+        arg.to_s.dup.force_encoding(Encoding::UTF_8).scrub
+      end
+
       def encode(args)
         JSON.generate(args).gsub("\u2028", "\\u2028").gsub("\u2029", "\\u2029")
       end

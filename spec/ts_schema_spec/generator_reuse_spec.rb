@@ -130,6 +130,20 @@ RSpec.describe TsSchemaSpec::Generator, "across many sources" do
     TsSchemaSpec.reset_config!
   end
 
+  it "passes createProgram's object form through to typescript" do
+    script = <<~JS
+      require(#{described_class::SERVER.to_json})
+      const path = require('node:path')
+      const generatorDir = path.dirname(require.resolve('ts-json-schema-generator/package.json'))
+      const ts = require(require.resolve('typescript', { paths: [generatorDir] }))
+      process.stdout.write(String(ts.createProgram({ rootNames: [], options: {} }).getRootFileNames().length))
+    JS
+
+    out, = Open3.capture2("node", "-e", script, stdin_data: "")
+
+    expect(out).to eq("0")
+  end
+
   it "uses the current directory's node_modules, not those of the directory node started in" do
     described_class.generate(fixture("roleMatrix.ts"))
 

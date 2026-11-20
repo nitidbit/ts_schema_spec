@@ -187,6 +187,8 @@ module TsSchemaSpec
         unless stopped || server.nil?
           terminate(server.wait, "KILL")
           [server.stdin, server.stdout].each { |io| io.close unless io.closed? }
+          server.wait.join(EXIT_TIMEOUT)
+          server.stderr_reader.kill
         end
       end
 

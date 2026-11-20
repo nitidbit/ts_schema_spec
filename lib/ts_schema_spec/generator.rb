@@ -20,7 +20,7 @@ module TsSchemaSpec
     # node's phrasing when the project's node_modules lacks either package the
     # server loads. Anything looser — a bare "not found" — swallows the
     # generator's real diagnostic.
-    MISSING_PACKAGE = /Cannot find module '(ts-json-schema-generator|typescript)[^']*'/
+    MISSING_PACKAGE = %r{Error: Cannot find module '(ts-json-schema-generator|typescript)(/[^']*)?'}
 
     class << self
       def generate(source)

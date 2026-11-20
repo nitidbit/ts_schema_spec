@@ -42,6 +42,24 @@ RSpec.describe TsSchemaSpec::Generator do
       .to raise_error(TsSchemaSpec::GenerationError, /No input files/)
   end
 
+  it "keeps the generator's own stderr when a module it can't find merely starts like a package it needs" do
+    allow(described_class).to receive(:request)
+      .and_return("status" => 1, "stdout" => "", "stderr" => "Error: Cannot find module 'typescript-plugin-x'")
+
+    expect { described_class.generate("anything.ts") }
+      .to raise_error(TsSchemaSpec::GenerationError, /typescript-plugin-x/) { |e| expect(e.message).not_to include("npm install") }
+  end
+
+  it "keeps TypeScript's own complaint about a module it can't resolve" do
+    allow(described_class).to receive(:request).and_return(
+      "status" => 1, "stdout" => "",
+      "stderr" => "error TS2307: Cannot find module 'typescript' or its corresponding type declarations."
+    )
+
+    expect { described_class.generate("anything.ts") }
+      .to raise_error(TsSchemaSpec::GenerationError, /TS2307/) { |e| expect(e.message).not_to include("npm install") }
+  end
+
   it "names a command that reproduces the failure" do
     expect { described_class.generate(fixture("missing.ts")) }
       .to raise_error(TsSchemaSpec::GenerationError, /Rerun: npx ts-json-schema-generator --path \S+missing\.ts/)

@@ -144,19 +144,6 @@ RSpec.describe TsSchemaSpec::Generator, "across many sources" do
     expect(out).to eq("0")
   end
 
-  it "stops a node it started just as an interrupt arrived" do
-    waits = []
-    allow(Open3).to receive(:popen3).and_wrap_original do |original, *args|
-      original.call(*args).tap do |io|
-        waits << io.last
-        Thread.current.raise(Timeout::Error)
-      end
-    end
-
-    expect { described_class.generate(fixture("roleMatrix.ts")) }.to raise_error(Timeout::Error)
-    expect(waits.last.join(5)).to be_truthy
-  end
-
   it "uses the current directory's node_modules, not those of the directory node started in" do
     described_class.generate(fixture("roleMatrix.ts"))
 

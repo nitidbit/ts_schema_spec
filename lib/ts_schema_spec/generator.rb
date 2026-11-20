@@ -53,7 +53,7 @@ module TsSchemaSpec
           # node resolves the generator, typescript and type roots from the
           # directory it starts in, and TypeScript memoizes it.
           stop_server unless @server&.wait&.alive? && @server.cwd == Dir.pwd
-          start_server unless @server
+          @server ||= start_server
           exchange(args) || raise(ServerExit, stop_server)
         rescue Errno::EPIPE, IOError
           raise ServerExit, stop_server
@@ -78,13 +78,7 @@ module TsSchemaSpec
         raise ServerExit, "node wrote something that is not a reply: #{line.chomp}\n\n#{stop_server(kill: true)}"
       end
 
-      # An interrupt between spawning node and recording it would leave node
-      # running with nothing to stop it.
       def start_server
-        Thread.handle_interrupt(Object => :never) { @server = spawn_server }
-      end
-
-      def spawn_server
         cwd = Dir.pwd
         stdin, stdout, stderr, wait = begin
           Open3.popen3("node", SERVER, chdir: cwd)

@@ -6,32 +6,94 @@ require "open3"
 module TsSchemaSpec
   module Generator
     COMMAND = %w[npx ts-json-schema-generator].freeze
+    SERVER = File.expand_path("generator_server.cjs", __dir__)
+
+    class ServerExit < StandardError; end
+
+    Server = Struct.new(:stdin, :stdout, :stderr, :wait)
+
+    # node's phrasing when the project's node_modules lacks either package the
+    # server loads. Anything looser — a bare "not found" — swallows the
+    # generator's real diagnostic.
+    MISSING_PACKAGE = /Cannot find module '(ts-json-schema-generator|typescript)[^']*'/
 
     class << self
       def generate(source)
         command = command_for(source)
-        stdout, stderr, status = Open3.capture3(*command)
+        reply = request(command.drop(COMMAND.size))
 
-        unless status.success?
-          raise GenerationError, failure(command, stderr)
+        unless reply["status"].zero?
+          raise GenerationError, failure(command, reply["stderr"])
         end
 
-        JSON.parse(stdout)
+        JSON.parse(reply["stdout"])
       rescue JSON::ParserError => e
-        raise GenerationError, failure(command, "#{e.message}\n\n#{stderr}")
+        raise GenerationError, failure(command, "#{e.message}\n\n#{reply&.fetch("stderr", nil)}")
       rescue Errno::ENOENT
         raise GenerationError, missing_generator(command)
+      rescue ServerExit => e
+        raise GenerationError, failure(command, e.message)
       end
 
       def command_for(source)
         COMMAND + ["--path", source.to_s, "--no-type-check"] + TsSchemaSpec.config.to_args
       end
 
+      def stop
+        mutex.synchronize { stop_server }
+      end
+
       private
 
-      # npx's own phrasing for "the package is not installed". Anything looser
-      # — a bare "not found" — swallows the generator's real diagnostic.
-      MISSING_PACKAGE = /missing packages|could not determine executable|npx.*not found|not found.*npx/i
+      def request(args)
+        mutex.synchronize do
+          stop_server unless @server&.wait&.alive?
+          @server ||= start_server
+          exchange(args) || raise(ServerExit, stop_server(kill: true))
+        rescue Errno::EPIPE, IOError
+          raise ServerExit, stop_server(kill: true)
+        rescue Exception
+          # Anything that interrupts an exchange (Timeout, Interrupt) leaves
+          # its reply unread, and the next request would read it as its own.
+          stop_server(kill: true)
+          raise
+        end
+      end
+
+      def exchange(args)
+        @server.stdin.puts(JSON.generate(cwd: Dir.pwd, args: args))
+        line = @server.stdout.gets
+        JSON.parse(line) if line
+      end
+
+      def start_server
+        stdin, stdout, stderr, wait = Open3.popen3("node", SERVER)
+        at_exit { stop } unless @stop_registered
+        @stop_registered = true
+        Server.new(stdin, stdout, Thread.new { stderr.read }, wait)
+      end
+
+      def stop_server(kill: false)
+        server = @server
+        return unless server
+
+        @server = nil
+        terminate(server.wait.pid) if kill
+        server.stdin.close unless server.stdin.closed?
+        server.stdout.close unless server.stdout.closed?
+        server.wait.join
+        server.stderr.value
+      end
+
+      def terminate(pid)
+        Process.kill("TERM", pid)
+      rescue Errno::ESRCH
+        nil
+      end
+
+      def mutex
+        @mutex ||= Mutex.new
+      end
 
       def missing_generator(command, stderr = nil)
         message = <<~MSG

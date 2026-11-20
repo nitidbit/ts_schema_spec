@@ -237,12 +237,20 @@ timestamps the React side ignores. Fix by declaring the field or narrowing the
 
 ## Cost
 
-One `npx ts-json-schema-generator` run per source file. Generated schemas are
-cached in memory, keyed by the file and the generator arguments, so reading
-three types out of one `.ts` costs one run rather than three, and changing
-`TsSchemaSpec.configure` regenerates rather than serving a stale schema.
+The first schema of a test run costs a few seconds; later source files cost
+tens of milliseconds. The gem starts one `node` process per test process and
+runs the generator's own CLI inside it for each source file, so the work every
+run repeats — parsing `tsconfig.json` (which globs the whole project) and the
+lib and `node_modules` declarations — happens once.
 
-The cache lives in the process, so parallel test workers each pay for it once.
+Generated schemas are cached in memory, keyed by the file and the generator
+arguments, so reading three types out of one `.ts` costs one run rather than
+three, and changing `TsSchemaSpec.configure` regenerates rather than serving a
+stale schema.
+
+Both caches live in the process, so parallel test workers each pay for them
+once, and an edit to a `.ts` file takes effect on the next test run, not
+mid-run.
 
 ## Troubleshooting
 

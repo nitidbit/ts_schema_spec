@@ -1,34 +1,48 @@
 # frozen_string_literal: true
 
+require "tmpdir"
+
 RSpec.describe TsSchemaSpec::Generator do
-  it "explains how to install the generator when npx is not on PATH" do
-    allow(Open3).to receive(:capture3).and_raise(Errno::ENOENT, "npx")
+  around do |example|
+    described_class.stop
+    example.run
+    described_class.stop
+  end
+
+  it "explains how to install the generator when node is not on PATH" do
+    allow(Open3).to receive(:popen3).and_raise(Errno::ENOENT, "node")
 
     expect { described_class.generate("anything.ts") }
       .to raise_error(TsSchemaSpec::GenerationError, /npm install --save-dev ts-json-schema-generator/)
   end
 
-  it "explains the same when npx cannot find the package" do
-    allow(Open3).to receive(:capture3)
-      .and_return(["", "npm error npx canceled due to missing packages", instance_double(Process::Status, success?: false)])
+  context "in a project without the generator in its node_modules" do
+    around { |example| Dir.mktmpdir { |dir| Dir.chdir(dir) { example.run } } }
 
-    expect { described_class.generate("anything.ts") }
-      .to raise_error(TsSchemaSpec::GenerationError, /npm install --save-dev ts-json-schema-generator/)
+    it "explains how to install it" do
+      expect { described_class.generate("anything.ts") }
+        .to raise_error(TsSchemaSpec::GenerationError, /npm install --save-dev ts-json-schema-generator/)
+    end
+
+    it "keeps node's own complaint alongside the instructions" do
+      expect { described_class.generate("anything.ts") }
+        .to raise_error(TsSchemaSpec::GenerationError, /Cannot find module/)
+    end
   end
 
-  it "keeps the generator's own stderr when it merely mentions something not found" do
-    allow(Open3).to receive(:capture3)
-      .and_return(["", "error TS2307: Cannot find module '@/roles'. File not found.", instance_double(Process::Status, success?: false)])
-
-    expect { described_class.generate("anything.ts") }
-      .to raise_error(TsSchemaSpec::GenerationError, /Cannot find module/)
+  it "keeps the generator's own stderr when it fails" do
+    expect { described_class.generate(fixture("missing.ts")) }
+      .to raise_error(TsSchemaSpec::GenerationError, /No input files/)
   end
 
-  it "keeps the stderr alongside the install instructions when the package is missing" do
-    allow(Open3).to receive(:capture3)
-      .and_return(["", "npm error npx canceled due to missing packages", instance_double(Process::Status, success?: false)])
+  it "names a command that reproduces the failure" do
+    expect { described_class.generate(fixture("missing.ts")) }
+      .to raise_error(TsSchemaSpec::GenerationError, /Rerun: npx ts-json-schema-generator --path \S+missing\.ts/)
+  end
 
-    expect { described_class.generate("anything.ts") }
-      .to raise_error(TsSchemaSpec::GenerationError, /npx canceled/)
+  it "still generates after a failure" do
+    expect { described_class.generate(fixture("missing.ts")) }.to raise_error(TsSchemaSpec::GenerationError)
+
+    expect(described_class.generate(fixture("roleMatrix.ts"))["definitions"]).to include("Role")
   end
 end

@@ -40,6 +40,19 @@ RSpec.describe TsSchemaSpec::Generator do
       .to raise_error(TsSchemaSpec::GenerationError, /Rerun: npx ts-json-schema-generator --path \S+missing\.ts/)
   end
 
+  it "says how node ended when it dies without a word on stderr" do
+    waits = []
+    allow(Open3).to receive(:popen3).and_wrap_original { |original, *args| original.call(*args).tap { |io| waits << io.last } }
+    allow(described_class).to receive(:exchange).and_wrap_original do |original, *args|
+      Process.kill("KILL", waits.last.pid)
+      waits.last.join
+      original.call(*args)
+    end
+
+    expect { described_class.generate(fixture("roleMatrix.ts")) }
+      .to raise_error(TsSchemaSpec::GenerationError, /node ended: .*SIGKILL/)
+  end
+
   it "still generates after a failure" do
     expect { described_class.generate(fixture("missing.ts")) }.to raise_error(TsSchemaSpec::GenerationError)
 

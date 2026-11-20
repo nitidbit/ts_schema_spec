@@ -92,21 +92,26 @@ module TsSchemaSpec
         return unless server
 
         @server = nil
-        terminate(server.wait) if kill
+        sent = terminate(server.wait) if kill
         server.stdin.close unless server.stdin.closed?
         server.stdout.close unless server.stdout.closed?
         unless server.wait.join(EXIT_TIMEOUT)
-          terminate(server.wait)
-          terminate(server.wait, "KILL") unless server.wait.join(EXIT_TIMEOUT)
+          sent = terminate(server.wait) || sent
+          sent = terminate(server.wait, "KILL") || sent unless server.wait.join(EXIT_TIMEOUT)
           server.wait.join
         end
-        server.stderr.value
+        ended = "node ended: #{server.wait.value}"
+        ended += " after ts_schema_spec sent it #{sent}" if sent
+        "#{server.stderr.value.to_s.strip}\n\n#{ended}".strip
       end
 
       # Once the waiter has reaped node, its pid may belong to another process.
       # Checking first narrows that window; only a pidfd could close it.
       def terminate(wait, signal = "TERM")
-        Process.kill(signal, wait.pid) if wait.alive?
+        return unless wait.alive?
+
+        Process.kill(signal, wait.pid)
+        signal
       rescue Errno::ESRCH
         nil
       end

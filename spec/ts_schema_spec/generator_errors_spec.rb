@@ -181,7 +181,7 @@ RSpec.describe TsSchemaSpec::Generator do
     stdout, real_stderr, writer = ios
     writer.write("an earlier warning\n\0")
     writer.close
-    described_class.instance_variable_get(:@server).stderr.join(2)
+    described_class.instance_variable_get(:@server).stderr_reader.join(2)
     allow(stdout).to receive(:gets).and_return(nil)
 
     expect { described_class.generate(fixture("roleMatrix.ts")) }
@@ -202,7 +202,7 @@ RSpec.describe TsSchemaSpec::Generator do
     stdout, real_stderr, writer = ios
     writer.write("an earlier warning\n\0a crash between requests\n")
     writer.close
-    described_class.instance_variable_get(:@server).stderr.join(2)
+    described_class.instance_variable_get(:@server).stderr_reader.join(2)
     allow(stdout).to receive(:gets).and_return(nil)
 
     expect { described_class.generate(fixture("roleMatrix.ts")) }

@@ -10,7 +10,7 @@ module TsSchemaSpec
 
     class ServerExit < StandardError; end
 
-    Server = Struct.new(:stdin, :stdout, :stderr, :wait, :cwd, :log)
+    Server = Struct.new(:stdin, :stdout, :stderr_reader, :wait, :cwd, :log)
 
     MUTEX = Mutex.new
 
@@ -177,7 +177,7 @@ module TsSchemaSpec
         ended = "node ended: #{status}" if status
         ended += " after ts_schema_spec sent it #{sent}" if ended && sent
         # Something node spawned may still hold its stderr open.
-        server.stderr.kill.join unless server.stderr.join(EXIT_TIMEOUT)
+        server.stderr_reader.kill.join unless server.stderr_reader.join(EXIT_TIMEOUT)
         stderr = server.log.dup.force_encoding(Encoding::UTF_8).scrub
         stopped = true
         "#{stderr.strip}\n\n#{ended}".strip

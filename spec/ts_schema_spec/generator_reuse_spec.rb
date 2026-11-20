@@ -94,6 +94,16 @@ RSpec.describe TsSchemaSpec::Generator, "across many sources" do
     end
   end
 
+  it "closes every pipe to a node it stops" do
+    pipes = []
+    allow(Open3).to receive(:popen3).and_wrap_original { |original, *args| original.call(*args).tap { |io| pipes.concat(io.first(3)) } }
+    described_class.generate(fixture("roleMatrix.ts"))
+
+    described_class.stop
+
+    expect(pipes).to all(be_closed)
+  end
+
   it "uses the current directory's node_modules, not those of the directory node started in" do
     described_class.generate(fixture("roleMatrix.ts"))
 

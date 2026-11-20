@@ -95,7 +95,14 @@ module TsSchemaSpec
         begin
           at_exit { stop } unless @stop_registered
           @stop_registered = true
-          Server.new(stdin, stdout, Thread.new { stderr.read }, wait, cwd)
+          reader = Thread.new do
+            stderr.read
+          rescue IOError
+            nil
+          ensure
+            stderr.close
+          end
+          Server.new(stdin, stdout, reader, wait, cwd)
         rescue Exception
           terminate(wait)
           [stdin, stdout, stderr].each(&:close)

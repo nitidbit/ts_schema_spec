@@ -22,7 +22,7 @@ module TsSchemaSpec
     # generator's real diagnostic.
     MISSING_PACKAGE = %r{Error: Cannot find module '(ts-json-schema-generator|typescript)(/[^']*)?'}
 
-    UNSUPPORTED_GENERATOR = /ts_schema_spec supports ts-json-schema-generator .*/
+    UNSUPPORTED_GENERATOR = /^Error: (ts_schema_spec supports ts-json-schema-generator .*)$/
 
     class << self
       def generate(source)
@@ -174,7 +174,7 @@ module TsSchemaSpec
         stderr = stderr.to_s.scrub
         return missing_generator(command, stderr) if stderr.match?(MISSING_PACKAGE)
 
-        unsupported = stderr[UNSUPPORTED_GENERATOR]
+        unsupported = stderr[UNSUPPORTED_GENERATOR, 1]
         return "#{unsupported}\n" if unsupported
 
         <<~MSG

@@ -58,6 +58,16 @@ RSpec.describe TsSchemaSpec::Generator do
     end
   end
 
+  it "keeps the whole failure when the version requirement is only quoted in it" do
+    allow(described_class).to receive(:request).and_return(
+      "status" => 1, "stdout" => "",
+      "stderr" => "wrapped: ts_schema_spec supports ts-json-schema-generator 2.4 or later 2.x\nmore detail"
+    )
+
+    expect { described_class.generate("anything.ts") }
+      .to raise_error(TsSchemaSpec::GenerationError, /Rerun:.*more detail/m)
+  end
+
   it "keeps the generator's own stderr when it fails" do
     expect { described_class.generate(fixture("missing.ts")) }
       .to raise_error(TsSchemaSpec::GenerationError, /No input files/)

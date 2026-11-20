@@ -9,11 +9,18 @@ RSpec.describe TsSchemaSpec::Generator do
     described_class.stop
   end
 
-  it "explains how to install the generator when node is not on PATH" do
+  it "says node is missing, rather than the generator, when node is not on PATH" do
     allow(Open3).to receive(:popen3).and_raise(Errno::ENOENT, "node")
 
     expect { described_class.generate("anything.ts") }
-      .to raise_error(TsSchemaSpec::GenerationError, /npm install --save-dev ts-json-schema-generator/)
+      .to raise_error(TsSchemaSpec::GenerationError, /could not run node.*PATH/m) { |e| expect(e.message).not_to include("npm install") }
+  end
+
+  it "reports an error that isn't about node itself as it is, with the command that reproduces it" do
+    allow(Open3).to receive(:popen3).and_raise(Errno::ENOENT, "/gone")
+
+    expect { described_class.generate("anything.ts") }
+      .to raise_error(TsSchemaSpec::GenerationError, %r{/gone}) { |e| expect(e.message).to include("Rerun:").and(satisfy { |m| !m.include?("PATH") }) }
   end
 
   context "in a project without the generator in its node_modules" do

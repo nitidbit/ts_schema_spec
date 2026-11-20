@@ -34,9 +34,7 @@ module TsSchemaSpec
         JSON.parse(reply["stdout"])
       rescue JSON::ParserError => e
         raise GenerationError, failure(command, "#{e.message}\n\n#{reply&.fetch("stderr", nil)}")
-      rescue Errno::ENOENT
-        raise GenerationError, missing_generator(command)
-      rescue ServerExit => e
+      rescue ServerExit, Errno::ENOENT => e
         raise GenerationError, failure(command, e.message)
       end
 
@@ -82,7 +80,18 @@ module TsSchemaSpec
 
       def start_server
         cwd = Dir.pwd
-        stdin, stdout, stderr, wait = Open3.popen3("node", SERVER, chdir: cwd)
+        stdin, stdout, stderr, wait = begin
+          Open3.popen3("node", SERVER, chdir: cwd)
+        rescue Errno::ENOENT => e
+          raise unless e.message.end_with?(" - node")
+
+          raise GenerationError, <<~MSG
+            could not run node (#{e.message}).
+
+            ts_schema_spec runs ts-json-schema-generator with node, so node must
+            be on the PATH of the process running your specs.
+          MSG
+        end
         begin
           at_exit { stop } unless @stop_registered
           @stop_registered = true

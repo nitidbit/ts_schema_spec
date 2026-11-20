@@ -189,6 +189,19 @@ RSpec.describe TsSchemaSpec::Generator, "across many sources" do
     TsSchemaSpec.reset_config!
   end
 
+  it "resolves an import again once a closer match appears" do
+    Dir.mktmpdir do |dir|
+      FileUtils.mkdir_p("#{dir}/shared")
+      File.write("#{dir}/shared/index.ts", "export interface Shared { fromIndex: string }\n")
+      File.write("#{dir}/a.ts", "import { Shared } from './shared'\nexport interface A { shared: Shared }\n")
+      described_class.generate("#{dir}/a.ts")
+
+      File.write("#{dir}/shared.ts", "export interface Shared { fromFile: number }\n")
+
+      expect(described_class.generate("#{dir}/a.ts").dig("definitions", "Shared", "properties").keys).to eq(["fromFile"])
+    end
+  end
+
   it "uses the current directory's node_modules, not those of the directory node started in" do
     described_class.generate(fixture("roleMatrix.ts"))
 

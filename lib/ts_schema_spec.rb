@@ -40,12 +40,12 @@ module TsSchemaSpec
 
     def configure
       yield(config)
-      clear_cache!
+      documents.clear
     end
 
     def reset_config!
       @config = nil
-      clear_cache!
+      documents.clear
     end
 
     private

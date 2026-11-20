@@ -280,6 +280,24 @@ RSpec.describe TsSchemaSpec::Generator, "across many sources" do
     end
   end
 
+  it "kills node when stopping it is interrupted" do
+    waits = []
+    allow(Open3).to receive(:popen3).and_wrap_original { |original, *args| original.call(*args).tap { |io| waits << io.last } }
+    described_class.generate(fixture("roleMatrix.ts"))
+    child = fork do
+      sleep 5
+      exit!
+    end
+
+    expect { Timeout.timeout(0.5) { described_class.stop } }.to raise_error(Timeout::Error)
+    expect(waits.last.join(2)).to be_truthy
+  ensure
+    if child
+      Process.kill("KILL", child)
+      Process.wait(child)
+    end
+  end
+
   it "uses the current directory's node_modules, not those of the directory node started in" do
     described_class.generate(fixture("roleMatrix.ts"))
 

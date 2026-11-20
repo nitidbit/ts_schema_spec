@@ -164,6 +164,7 @@ module TsSchemaSpec
         return unless server
 
         @server = nil
+        stopped = false
         sent = terminate(server.wait) if kill
         server.stdin.close unless server.stdin.closed?
         server.stdout.close unless server.stdout.closed?
@@ -178,7 +179,15 @@ module TsSchemaSpec
         # Something node spawned may still hold its stderr open.
         server.stderr.kill.join unless server.stderr.join(EXIT_TIMEOUT)
         stderr = server.log.dup.force_encoding(Encoding::UTF_8).scrub
+        stopped = true
         "#{stderr.strip}\n\n#{ended}".strip
+      ensure
+        # Cut short, as by an interrupt while waiting, it must still not leave
+        # node running with nothing tracking it.
+        unless stopped || server.nil?
+          terminate(server.wait, "KILL")
+          [server.stdin, server.stdout].each { |io| io.close unless io.closed? }
+        end
       end
 
       # Once the waiter has reaped node, its pid may belong to another process.

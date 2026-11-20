@@ -42,6 +42,22 @@ RSpec.describe TsSchemaSpec::Generator do
     end
   end
 
+  context "in a project with a generator older than 2.4" do
+    around do |example|
+      Dir.mktmpdir do |dir|
+        FileUtils.mkdir_p("#{dir}/node_modules/ts-json-schema-generator/dist")
+        File.write("#{dir}/node_modules/ts-json-schema-generator/package.json", '{"version": "2.3.0"}')
+        File.write("#{dir}/node_modules/ts-json-schema-generator/dist/ts-json-schema-generator.js", "")
+        Dir.chdir(dir) { example.run }
+      end
+    end
+
+    it "names the versions it supports" do
+      expect { described_class.generate("anything.ts") }
+        .to raise_error(TsSchemaSpec::GenerationError, /2\.4 or later.*2\.3\.0/m)
+    end
+  end
+
   it "keeps the generator's own stderr when it fails" do
     expect { described_class.generate(fixture("missing.ts")) }
       .to raise_error(TsSchemaSpec::GenerationError, /No input files/)

@@ -29,6 +29,32 @@ RSpec.describe "TsSchemaSpec.schema_for" do
     end
   end
 
+  it "reads an edited source again once the config is set directly" do
+    Dir.mktmpdir do |dir|
+      File.write("#{dir}/direct.ts", "export interface Direct { x: string }\n")
+      TsSchemaSpec.schema_for("#{dir}/direct.ts", "Direct")
+
+      File.write("#{dir}/direct.ts", "export interface Direct { x: number }\n")
+      TsSchemaSpec.config.generator_args = ["--strict-tuples"]
+
+      expect(TsSchemaSpec.schema_for("#{dir}/direct.ts", "Direct").valid?({ "x" => 1 })).to be(true)
+    end
+  ensure
+    TsSchemaSpec.reset_config!
+  end
+
+  it "keeps node running across configure" do
+    allow(Open3).to receive(:popen3).and_call_original
+    TsSchemaSpec.schema_for(fixture("roleMatrix.ts"), "Role")
+
+    TsSchemaSpec.configure { |c| c.generator_args = ["--strict-tuples"] }
+    TsSchemaSpec.schema_for(fixture("roleMatrix.ts"), "Role")
+
+    expect(Open3).to have_received(:popen3).once
+  ensure
+    TsSchemaSpec.reset_config!
+  end
+
   it "validates a payload against the named type" do
     schema = TsSchemaSpec.schema_for(fixture("roleMatrix.ts"), "RoleMatrixProps")
 

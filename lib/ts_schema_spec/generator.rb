@@ -160,14 +160,14 @@ module TsSchemaSpec
         nil
       end
 
-      def missing_generator(command, stderr = nil)
+      def missing_package(command, package, stderr = nil)
         message = <<~MSG
-          could not load ts-json-schema-generator from your node_modules.
+          could not load #{package} from your node_modules.
 
-          The generator parses your app's TypeScript, so it resolves from your
-          node_modules rather than from the gem:
+          The generator parses your app's TypeScript, so it and typescript
+          resolve from your node_modules rather than from the gem:
 
-            npm install --save-dev ts-json-schema-generator
+            npm install --save-dev #{package}
 
           Rerun: #{command.join(" ")}
         MSG
@@ -178,7 +178,8 @@ module TsSchemaSpec
 
       def failure(command, stderr)
         stderr = stderr.to_s.scrub
-        return missing_generator(command, stderr) if stderr.match?(MISSING_PACKAGE)
+        package = stderr[MISSING_PACKAGE, 1]
+        return missing_package(command, package, stderr) if package
 
         unsupported = stderr[UNSUPPORTED_GENERATOR, 1]
         return "#{unsupported}\n" if unsupported

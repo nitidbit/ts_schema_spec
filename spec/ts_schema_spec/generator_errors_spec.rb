@@ -96,6 +96,14 @@ RSpec.describe TsSchemaSpec::Generator do
       .to raise_error(TsSchemaSpec::GenerationError) { |e| expect(e.message).not_to match(/^\s+at /) }
   end
 
+  it "names typescript when it is typescript that can't be loaded" do
+    allow(described_class).to receive(:request)
+      .and_return("status" => 1, "stdout" => "", "stderr" => "Error: Cannot find module 'typescript'")
+
+    expect { described_class.generate("anything.ts") }
+      .to raise_error(TsSchemaSpec::GenerationError, /\Acould not load typescript .*npm install --save-dev typescript$/m)
+  end
+
   it "names a command that reproduces the failure" do
     expect { described_class.generate(fixture("missing.ts")) }
       .to raise_error(TsSchemaSpec::GenerationError, /Rerun: npx ts-json-schema-generator --path \S+missing\.ts/)

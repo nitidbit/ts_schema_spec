@@ -54,7 +54,7 @@ RSpec.describe TsSchemaSpec::Generator do
 
     it "names the versions it supports" do
       expect { described_class.generate("anything.ts") }
-        .to raise_error(TsSchemaSpec::GenerationError, /2\.4 or later.*2\.3\.0/m)
+        .to raise_error(TsSchemaSpec::GenerationError, /\Ats_schema_spec supports .*2\.4 or later.*2\.3\.0/m) { |e| expect(e.message).not_to include("Rerun") }
     end
   end
 

@@ -149,13 +149,14 @@ RSpec.describe TsSchemaSpec::Generator, "across many sources" do
     reader, writer = IO.pipe
     child = fork do
       reader.close
-      writer.write(described_class.stop.to_s)
+      writer.write("stopped: #{described_class.stop}")
+    ensure
       writer.close
       exit!
     end
     writer.close
 
-    expect(reader.read).not_to include("node ended")
+    expect(reader.read).to start_with("stopped: ").and(satisfy { |out| !out.include?("node ended") })
   ensure
     Process.wait(child) if child
   end

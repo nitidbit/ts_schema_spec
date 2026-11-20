@@ -1,7 +1,21 @@
 # frozen_string_literal: true
 
+require "tmpdir"
+
 RSpec.describe "TsSchemaSpec.schema_for" do
   before { TsSchemaSpec.clear_cache! }
+
+  it "reads an edited source again after clear_cache!" do
+    Dir.mktmpdir do |dir|
+      File.write("#{dir}/edited.ts", "export interface Edited { x: string }\n")
+      TsSchemaSpec.schema_for("#{dir}/edited.ts", "Edited")
+
+      File.write("#{dir}/edited.ts", "export interface Edited { x: number }\n")
+      TsSchemaSpec.clear_cache!
+
+      expect(TsSchemaSpec.schema_for("#{dir}/edited.ts", "Edited").valid?({ "x" => 1 })).to be(true)
+    end
+  end
 
   it "validates a payload against the named type" do
     schema = TsSchemaSpec.schema_for(fixture("roleMatrix.ts"), "RoleMatrixProps")

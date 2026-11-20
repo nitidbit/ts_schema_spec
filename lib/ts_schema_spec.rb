@@ -32,6 +32,7 @@ module TsSchemaSpec
 
     def clear_cache!
       documents.clear
+      Generator.stop
     end
 
     def config
@@ -40,12 +41,12 @@ module TsSchemaSpec
 
     def configure
       yield(config)
-      clear_cache!
+      documents.clear
     end
 
     def reset_config!
       @config = nil
-      clear_cache!
+      documents.clear
     end
 
     private

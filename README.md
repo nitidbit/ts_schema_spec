@@ -148,14 +148,14 @@ empty array.
 
 ## API
 
-| Call                                  | Returns                                              |
-| ------------------------------------- | ---------------------------------------------------- |
-| `TsSchemaSpec.schema_for(path, type)` | a `JSONSchemer` schema scoped to that exported type  |
-| `match_ts_schema(path, type)`         | matcher; validates a hash, or every item of an array |
-| `react_component_props(name[, html])` | array of props hashes, one per mount                 |
-| `TsSchemaSpec::Skill.check!(root)`    | raises if the installed skill is stale or missing    |
-| `TsSchemaSpec.configure`              | sets `tsconfig` and extra generator arguments        |
-| `TsSchemaSpec.clear_cache!`           | drops the generated-schema cache                     |
+| Call                                  | Returns                                                                             |
+| ------------------------------------- | ----------------------------------------------------------------------------------- |
+| `TsSchemaSpec.schema_for(path, type)` | a `JSONSchemer` schema scoped to that exported type                                 |
+| `match_ts_schema(path, type)`         | matcher; validates a hash, or every item of an array                                |
+| `react_component_props(name[, html])` | array of props hashes, one per mount                                                |
+| `TsSchemaSpec::Skill.check!(root)`    | raises if the installed skill is stale or missing                                   |
+| `TsSchemaSpec.configure`              | sets `tsconfig` and extra generator arguments                                       |
+| `TsSchemaSpec.clear_cache!`           | drops generated schemas and the parsed TypeScript, so edited sources are read again |
 
 `match_ts_schema` was called `match_schema` before 0.6.1. The old name still
 works but is deprecated and will be removed.
@@ -250,7 +250,7 @@ stale schema.
 
 Both caches live in the process, so parallel test workers each pay for them
 once, and an edit to a `.ts` file takes effect on the next test run, not
-mid-run.
+mid-run, unless `TsSchemaSpec.clear_cache!` is called.
 
 ## Troubleshooting
 

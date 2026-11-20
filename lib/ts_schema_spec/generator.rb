@@ -10,7 +10,7 @@ module TsSchemaSpec
 
     class ServerExit < StandardError; end
 
-    Server = Struct.new(:stdin, :stdout, :stderr, :wait, :cwd, :log, :mark)
+    Server = Struct.new(:stdin, :stdout, :stderr, :wait, :cwd, :log)
 
     MUTEX = Mutex.new
 
@@ -70,7 +70,6 @@ module TsSchemaSpec
       def exchange(args)
         # node's readline also ends a line at U+2028 and U+2029, which JSON
         # leaves unescaped.
-        @server.mark = @server.log.bytesize
         @server.stdin.puts(JSON.generate(args).gsub("\u2028", "\\u2028").gsub("\u2029", "\\u2029"))
         line = @server.stdout.gets
         return unless line
@@ -100,15 +99,19 @@ module TsSchemaSpec
         begin
           at_exit { stop_at_exit } unless @stop_registered
           @stop_registered = true
-          log = +""
+          log = String.new
           reader = Thread.new do
-            loop { log << stderr.readpartial(4096) }
+            loop do
+              chunk = stderr.readpartial(4096)
+              boundary = chunk.rindex("\0")
+              boundary ? log.replace(chunk.byteslice((boundary + 1)..)) : log << chunk
+            end
           rescue IOError
             nil
           ensure
             stderr.close
           end
-          @server = Server.new(stdin, stdout, reader, wait, cwd, log, 0)
+          @server = Server.new(stdin, stdout, reader, wait, cwd, log)
         rescue Exception
           terminate(wait)
           [stdin, stdout, stderr].each(&:close)
@@ -145,7 +148,7 @@ module TsSchemaSpec
         ended = "node ended: #{status}" if status
         ended += " after ts_schema_spec sent it #{sent}" if ended && sent
         server.stderr.join
-        stderr = server.log.byteslice(server.mark..).force_encoding(Encoding::UTF_8).scrub
+        stderr = server.log.dup.force_encoding(Encoding::UTF_8).scrub
         "#{stderr.strip}\n\n#{ended}".strip
       end
 

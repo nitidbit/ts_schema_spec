@@ -249,11 +249,12 @@ lib and `node_modules` declarations — happens once.
 Generated schemas are cached in memory, keyed by the file and the generator
 arguments, so reading three types out of one `.ts` costs one run rather than
 three, and changing `TsSchemaSpec.configure` regenerates rather than serving a
-schema made under the old settings.
+stale schema.
 
 Both caches live in the process, so parallel test workers each pay for them
 once, and an edit to a `.ts` file takes effect on the next test run, not
-mid-run, unless `TsSchemaSpec.clear_cache!` is called.
+mid-run, unless `TsSchemaSpec.clear_cache!` or `TsSchemaSpec.configure` is
+called.
 
 ## Troubleshooting
 

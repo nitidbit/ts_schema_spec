@@ -17,6 +17,18 @@ RSpec.describe "TsSchemaSpec.schema_for" do
     end
   end
 
+  it "reads an edited source again after configure" do
+    Dir.mktmpdir do |dir|
+      File.write("#{dir}/configured.ts", "export interface Configured { x: string }\n")
+      TsSchemaSpec.schema_for("#{dir}/configured.ts", "Configured")
+
+      File.write("#{dir}/configured.ts", "export interface Configured { x: number }\n")
+      TsSchemaSpec.configure { |c| c.generator_args = [] }
+
+      expect(TsSchemaSpec.schema_for("#{dir}/configured.ts", "Configured").valid?({ "x" => 1 })).to be(true)
+    end
+  end
+
   it "validates a payload against the named type" do
     schema = TsSchemaSpec.schema_for(fixture("roleMatrix.ts"), "RoleMatrixProps")
 

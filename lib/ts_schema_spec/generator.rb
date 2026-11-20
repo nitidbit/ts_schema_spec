@@ -99,7 +99,7 @@ module TsSchemaSpec
           MSG
         end
         begin
-          at_exit { stop } unless @stop_registered
+          at_exit { stop_at_exit } unless @stop_registered
           @stop_registered = true
           reader = Thread.new do
             stderr.read
@@ -113,6 +113,18 @@ module TsSchemaSpec
           terminate(wait)
           [stdin, stdout, stderr].each(&:close)
           raise
+        end
+      end
+
+      # A thread still mid-request holds MUTEX; node then sees EOF once this
+      # process exits and closes its pipes.
+      def stop_at_exit
+        return unless MUTEX.try_lock
+
+        begin
+          stop_server
+        ensure
+          MUTEX.unlock
         end
       end
 

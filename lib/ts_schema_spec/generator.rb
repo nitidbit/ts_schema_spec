@@ -14,6 +14,9 @@ module TsSchemaSpec
 
     MUTEX = Mutex.new
 
+    # node exits on stdin's EOF, unless a forked child still holds the pipe.
+    EXIT_TIMEOUT = 5
+
     # node's phrasing when the project's node_modules lacks either package the
     # server loads. Anything looser — a bare "not found" — swallows the
     # generator's real diagnostic.
@@ -92,7 +95,11 @@ module TsSchemaSpec
         terminate(server.wait) if kill
         server.stdin.close unless server.stdin.closed?
         server.stdout.close unless server.stdout.closed?
-        server.wait.join
+        unless server.wait.join(EXIT_TIMEOUT)
+          terminate(server.wait)
+          terminate(server.wait, "KILL") unless server.wait.join(EXIT_TIMEOUT)
+          server.wait.join
+        end
         server.stderr.value
       end
 

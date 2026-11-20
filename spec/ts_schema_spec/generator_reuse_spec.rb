@@ -60,6 +60,40 @@ RSpec.describe TsSchemaSpec::Generator, "across many sources" do
     expect(Process).not_to have_received(:kill).with("TERM", waits.last.pid)
   end
 
+  it "stops while a forked child still holds node's stdin open" do
+    stub_const("TsSchemaSpec::Generator::EXIT_TIMEOUT", 0.1)
+    described_class.generate(fixture("roleMatrix.ts"))
+    child = fork do
+      sleep 5
+      exit!
+    end
+
+    expect { Timeout.timeout(2) { described_class.stop } }.not_to raise_error
+  ensure
+    if child
+      Process.kill("KILL", child)
+      Process.wait(child)
+    end
+  end
+
+  it "kills a node that outlasts TERM" do
+    stub_const("TsSchemaSpec::Generator::EXIT_TIMEOUT", 0.1)
+    allow(Process).to receive(:kill).and_call_original
+    allow(Process).to receive(:kill).with("TERM", anything)
+    described_class.generate(fixture("roleMatrix.ts"))
+    child = fork do
+      sleep 5
+      exit!
+    end
+
+    expect { Timeout.timeout(2) { described_class.stop } }.not_to raise_error
+  ensure
+    if child
+      Process.kill("KILL", child)
+      Process.wait(child)
+    end
+  end
+
   it "uses the current directory's node_modules, not those of the directory node started in" do
     described_class.generate(fixture("roleMatrix.ts"))
 

@@ -211,6 +211,16 @@ RSpec.describe TsSchemaSpec::Generator do
     real_stderr&.close
   end
 
+  it "reports an argument that isn't valid UTF-8 without stopping node" do
+    allow(Open3).to receive(:popen3).and_call_original
+    described_class.generate(fixture("roleMatrix.ts"))
+
+    expect { described_class.generate((+"/tmp/\xFF.ts").force_encoding(Encoding::UTF_8)) }
+      .to raise_error(TsSchemaSpec::GenerationError, /UTF-8/)
+    described_class.generate(fixture("roleMatrix.ts"))
+    expect(Open3).to have_received(:popen3).once
+  end
+
   it "still generates after a failure" do
     expect { described_class.generate(fixture("missing.ts")) }.to raise_error(TsSchemaSpec::GenerationError)
 

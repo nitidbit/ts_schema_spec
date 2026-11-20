@@ -27,7 +27,7 @@ module TsSchemaSpec
     class << self
       def generate(source)
         command = command_for(source)
-        reply = request(command.drop(COMMAND.size))
+        reply = request(encode(command.drop(COMMAND.size)))
 
         unless reply["status"].zero?
           raise GenerationError, failure(command, reply["stderr"])
@@ -38,6 +38,8 @@ module TsSchemaSpec
         raise GenerationError, failure(command, "#{e.message}\n\n#{reply&.fetch("stderr", nil)}")
       rescue ServerExit, Errno::ENOENT => e
         raise GenerationError, failure(command, e.message)
+      rescue JSON::GeneratorError => e
+        raise GenerationError, failure(command.map { |arg| arg.to_s.dup.force_encoding(Encoding::UTF_8).scrub }, "every argument must be valid UTF-8: #{e.message}")
       end
 
       def command_for(source)
@@ -50,13 +52,13 @@ module TsSchemaSpec
 
       private
 
-      def request(args)
+      def request(request_line)
         MUTEX.synchronize do
           # node resolves the generator, typescript and type roots from the
           # directory it starts in, and TypeScript memoizes it.
           stop_server unless @server&.wait&.alive? && @server.cwd == Dir.pwd
           start_server unless @server
-          exchange(args) || raise(ServerExit, stop_server)
+          exchange(request_line) || raise(ServerExit, stop_server)
         rescue Errno::EPIPE, IOError
           raise ServerExit, stop_server
         rescue Exception
@@ -67,10 +69,14 @@ module TsSchemaSpec
         end
       end
 
-      def exchange(args)
-        # node's readline also ends a line at U+2028 and U+2029, which JSON
-        # leaves unescaped.
-        @server.stdin.puts(JSON.generate(args).gsub("\u2028", "\\u2028").gsub("\u2029", "\\u2029"))
+      # node's readline also ends a line at U+2028 and U+2029, which JSON
+      # leaves unescaped.
+      def encode(args)
+        JSON.generate(args).gsub("\u2028", "\\u2028").gsub("\u2029", "\\u2029")
+      end
+
+      def exchange(request_line)
+        @server.stdin.puts(request_line)
         line = @server.stdout.gets
         return unless line
 

@@ -144,6 +144,22 @@ RSpec.describe TsSchemaSpec::Generator, "across many sources" do
     expect(out).to eq("0")
   end
 
+  it "says nothing of how node ended in a forked child, which can't know" do
+    described_class.generate(fixture("roleMatrix.ts"))
+    reader, writer = IO.pipe
+    child = fork do
+      reader.close
+      writer.write(described_class.stop.to_s)
+      writer.close
+      exit!
+    end
+    writer.close
+
+    expect(reader.read).not_to include("node ended")
+  ensure
+    Process.wait(child) if child
+  end
+
   it "uses the current directory's node_modules, not those of the directory node started in" do
     described_class.generate(fixture("roleMatrix.ts"))
 

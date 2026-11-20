@@ -137,8 +137,9 @@ module TsSchemaSpec
           sent = terminate(server.wait, "KILL") || sent unless server.wait.join(EXIT_TIMEOUT)
           server.wait.join
         end
-        ended = "node ended: #{server.wait.value}"
-        ended += " after ts_schema_spec sent it #{sent}" if sent
+        status = server.wait.value
+        ended = "node ended: #{status}" if status
+        ended += " after ts_schema_spec sent it #{sent}" if ended && sent
         "#{server.stderr.value.to_s.strip}\n\n#{ended}".strip
       end
 

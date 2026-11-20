@@ -140,6 +140,17 @@ RSpec.describe TsSchemaSpec::Generator do
       .to raise_error(TsSchemaSpec::GenerationError, /after ts_schema_spec sent it TERM/)
   end
 
+  it "lets node exit by itself once its stdout ends, without a signal" do
+    allow(Process).to receive(:kill).and_call_original
+    allow(Open3).to receive(:popen3).and_wrap_original do |original, *args|
+      original.call(*args).tap { |io| allow(io[1]).to receive(:gets).and_return(nil) }
+    end
+
+    expect { described_class.generate(fixture("roleMatrix.ts")) }
+      .to raise_error(TsSchemaSpec::GenerationError) { |e| expect(e.message).not_to include("sent it") }
+    expect(Process).not_to have_received(:kill)
+  end
+
   it "still generates after a failure" do
     expect { described_class.generate(fixture("missing.ts")) }.to raise_error(TsSchemaSpec::GenerationError)
 

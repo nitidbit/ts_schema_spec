@@ -54,9 +54,9 @@ module TsSchemaSpec
           # directory it starts in, and TypeScript memoizes it.
           stop_server unless @server&.wait&.alive? && @server.cwd == Dir.pwd
           @server ||= start_server
-          exchange(args) || raise(ServerExit, stop_server(kill: true))
+          exchange(args) || raise(ServerExit, stop_server)
         rescue Errno::EPIPE, IOError
-          raise ServerExit, stop_server(kill: true)
+          raise ServerExit, stop_server
         rescue Exception
           # Anything that interrupts an exchange (Timeout, Interrupt) leaves
           # its reply unread, and the next request would read it as its own.

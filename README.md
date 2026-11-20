@@ -26,6 +26,9 @@ This gem requires ts-json-schema-generator, resolved from your project's
 npm install --save-dev ts-json-schema-generator
 ```
 
+It supports ts-json-schema-generator 2.x, and runs it with `node`, which must
+be on the `PATH` of the process running your specs.
+
 Add the following to your test suite:
 
 ```ruby

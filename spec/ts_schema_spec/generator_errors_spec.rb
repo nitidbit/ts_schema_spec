@@ -161,6 +161,27 @@ RSpec.describe TsSchemaSpec::Generator do
     expect(Process).not_to have_received(:kill)
   end
 
+  it "reports only what node wrote to stderr during the failing request" do
+    ios = []
+    allow(Open3).to receive(:popen3).and_wrap_original do |original, *args|
+      stdin, stdout, stderr, wait = original.call(*args)
+      reader, writer = IO.pipe
+      ios.push(stdout, stderr, writer)
+      [stdin, stdout, reader, wait]
+    end
+    described_class.generate(fixture("roleMatrix.ts"))
+    stdout, real_stderr, writer = ios
+    writer.write("an earlier warning\n")
+    writer.close
+    described_class.instance_variable_get(:@server).stderr.join(2)
+    allow(stdout).to receive(:gets).and_return(nil)
+
+    expect { described_class.generate(fixture("roleMatrix.ts")) }
+      .to raise_error(TsSchemaSpec::GenerationError) { |e| expect(e.message).not_to include("an earlier warning") }
+  ensure
+    real_stderr&.close
+  end
+
   it "still generates after a failure" do
     expect { described_class.generate(fixture("missing.ts")) }.to raise_error(TsSchemaSpec::GenerationError)
 

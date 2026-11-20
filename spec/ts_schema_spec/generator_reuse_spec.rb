@@ -202,6 +202,15 @@ RSpec.describe TsSchemaSpec::Generator, "across many sources" do
     end
   end
 
+  it "generates from a path holding a line or paragraph separator" do
+    Dir.mktmpdir do |dir|
+      path = "#{dir}/odd\u2028name\u2029.ts"
+      File.write(path, "export interface Odd { x: string }\n")
+
+      expect(described_class.generate(path)["definitions"]).to include("Odd")
+    end
+  end
+
   it "uses the current directory's node_modules, not those of the directory node started in" do
     described_class.generate(fixture("roleMatrix.ts"))
 

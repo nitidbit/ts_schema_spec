@@ -68,7 +68,9 @@ module TsSchemaSpec
       end
 
       def exchange(args)
-        @server.stdin.puts(JSON.generate(args))
+        # node's readline also ends a line at U+2028 and U+2029, which JSON
+        # leaves unescaped.
+        @server.stdin.puts(JSON.generate(args).gsub("\u2028", "\\u2028").gsub("\u2029", "\\u2029"))
         line = @server.stdout.gets
         return unless line
 

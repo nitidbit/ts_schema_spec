@@ -55,7 +55,7 @@ module TsSchemaSpec
           # node resolves the generator, typescript and type roots from the
           # directory it starts in, and TypeScript memoizes it.
           stop_server unless @server&.wait&.alive? && @server.cwd == Dir.pwd
-          @server ||= start_server
+          start_server unless @server
           exchange(args) || raise(ServerExit, stop_server)
         rescue Errno::EPIPE, IOError
           raise ServerExit, stop_server
@@ -104,7 +104,7 @@ module TsSchemaSpec
           ensure
             stderr.close
           end
-          Server.new(stdin, stdout, reader, wait, cwd)
+          @server = Server.new(stdin, stdout, reader, wait, cwd)
         rescue Exception
           terminate(wait)
           [stdin, stdout, stderr].each(&:close)

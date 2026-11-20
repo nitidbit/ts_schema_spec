@@ -159,7 +159,7 @@ empty array.
 | `TsSchemaSpec::Skill.check!(root)`    | raises if the installed skill is stale or missing                                                   |
 | `TsSchemaSpec.configure`              | sets `tsconfig` and extra generator arguments                                                       |
 | `TsSchemaSpec.clear_cache!`           | drops generated schemas, so the next ones come from your `.ts` and tsconfig files as they now stand |
-| `TsSchemaSpec::Generator.stop`        | stops node; the next schema starts it afresh, loading upgraded packages                             |
+| `TsSchemaSpec::Generator.stop`        | stops node; with `clear_cache!`, the next schemas start it afresh, loading upgraded packages        |
 
 `match_ts_schema` was called `match_schema` before 0.6.1. The old name still
 works but is deprecated and will be removed.

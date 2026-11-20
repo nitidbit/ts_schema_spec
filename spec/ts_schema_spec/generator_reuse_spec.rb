@@ -118,6 +118,18 @@ RSpec.describe TsSchemaSpec::Generator, "across many sources" do
     expect(JSON.parse(out)).to include("SyntaxKind", "createProgram", "parseJsonConfigFileContent")
   end
 
+  it "generates under a tsconfig that extends a base TypeScript complains about, as the CLI does" do
+    Dir.mktmpdir do |dir|
+      File.write("#{dir}/base.json", '{"compilerOptions": {"bogus": 1}}')
+      File.write("#{dir}/tsconfig.json", '{"extends": "./base.json"}')
+      TsSchemaSpec.configure { |c| c.tsconfig = "#{dir}/tsconfig.json" }
+
+      expect(described_class.generate(fixture("roleMatrix.ts"))["definitions"]).to include("Role")
+    end
+  ensure
+    TsSchemaSpec.reset_config!
+  end
+
   it "uses the current directory's node_modules, not those of the directory node started in" do
     described_class.generate(fixture("roleMatrix.ts"))
 

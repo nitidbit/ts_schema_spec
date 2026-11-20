@@ -160,6 +160,20 @@ RSpec.describe TsSchemaSpec::Generator, "across many sources" do
     Process.wait(child) if child
   end
 
+  it "leaves a referenced file that doesn't exist to TypeScript" do
+    Dir.mktmpdir do |dir|
+      File.write("#{dir}/refers.ts", "/// <reference path=\"./missing.d.ts\" />\nexport interface Refers { x: string }\n")
+
+      outcome = begin
+        described_class.generate("#{dir}/refers.ts")
+      rescue TsSchemaSpec::GenerationError => e
+        e.message
+      end
+
+      expect(outcome.to_s).not_to include("Cannot read properties")
+    end
+  end
+
   it "uses the current directory's node_modules, not those of the directory node started in" do
     described_class.generate(fixture("roleMatrix.ts"))
 

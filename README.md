@@ -252,9 +252,9 @@ three, and changing `TsSchemaSpec.configure` regenerates rather than serving a
 stale schema.
 
 Both caches live in the process, so parallel test workers each pay for them
-once. node parses a `.ts` file again once its modification time changes, but
-a schema already generated stays cached until `TsSchemaSpec.clear_cache!` or
-`TsSchemaSpec.configure` is called.
+once. node parses a `.ts` file again once its contents change, but a schema
+already generated stays cached until `TsSchemaSpec.clear_cache!`, `configure`
+or `reset_config!` is called. A changed config caches schemas of its own.
 
 ## Troubleshooting
 

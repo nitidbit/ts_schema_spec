@@ -60,6 +60,11 @@ RSpec.describe TsSchemaSpec::Generator do
       .to raise_error(TsSchemaSpec::GenerationError, /TS2307/) { |e| expect(e.message).not_to include("npm install") }
   end
 
+  it "leaves out the stack trace the CLI writes to stdout" do
+    expect { described_class.generate(fixture("missing.ts")) }
+      .to raise_error(TsSchemaSpec::GenerationError) { |e| expect(e.message).not_to match(/^\s+at /) }
+  end
+
   it "names a command that reproduces the failure" do
     expect { described_class.generate(fixture("missing.ts")) }
       .to raise_error(TsSchemaSpec::GenerationError, /Rerun: npx ts-json-schema-generator --path \S+missing\.ts/)

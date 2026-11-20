@@ -76,6 +76,22 @@ RSpec.describe TsSchemaSpec::Generator, "across many sources" do
     end
   end
 
+  it "stops while something node spawned still holds its stderr open" do
+    stub_const("TsSchemaSpec::Generator::EXIT_TIMEOUT", 0.1)
+    ios = []
+    allow(Open3).to receive(:popen3).and_wrap_original do |original, *args|
+      stdin, stdout, stderr, wait = original.call(*args)
+      reader, writer = IO.pipe
+      ios.push(stderr, writer)
+      [stdin, stdout, reader, wait]
+    end
+    described_class.generate(fixture("roleMatrix.ts"))
+
+    expect { Timeout.timeout(2) { described_class.stop } }.not_to raise_error
+  ensure
+    ios.each(&:close)
+  end
+
   it "kills a node that outlasts TERM" do
     stub_const("TsSchemaSpec::Generator::EXIT_TIMEOUT", 0.1)
     allow(Process).to receive(:kill).and_call_original

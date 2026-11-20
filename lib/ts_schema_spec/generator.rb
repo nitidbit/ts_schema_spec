@@ -147,7 +147,8 @@ module TsSchemaSpec
         status = server.wait.value
         ended = "node ended: #{status}" if status
         ended += " after ts_schema_spec sent it #{sent}" if ended && sent
-        server.stderr.join
+        # Something node spawned may still hold its stderr open.
+        server.stderr.kill.join unless server.stderr.join(EXIT_TIMEOUT)
         stderr = server.log.dup.force_encoding(Encoding::UTF_8).scrub
         "#{stderr.strip}\n\n#{ended}".strip
       end

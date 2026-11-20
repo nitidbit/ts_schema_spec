@@ -104,6 +104,20 @@ RSpec.describe TsSchemaSpec::Generator, "across many sources" do
     expect(pipes).to all(be_closed)
   end
 
+  it "hands the generator a typescript with all of its own keys, which tslib's __importStar copies" do
+    script = <<~JS
+      require(#{described_class::SERVER.to_json})
+      const path = require('node:path')
+      const generatorDir = path.dirname(require.resolve('ts-json-schema-generator/package.json'))
+      const ts = require(require.resolve('typescript', { paths: [generatorDir] }))
+      process.stdout.write(JSON.stringify(Object.keys(ts)))
+    JS
+
+    out, = Open3.capture2("node", "-e", script, stdin_data: "")
+
+    expect(JSON.parse(out)).to include("SyntaxKind", "createProgram", "parseJsonConfigFileContent")
+  end
+
   it "uses the current directory's node_modules, not those of the directory node started in" do
     described_class.generate(fixture("roleMatrix.ts"))
 

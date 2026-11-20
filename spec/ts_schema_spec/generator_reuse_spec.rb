@@ -170,6 +170,25 @@ RSpec.describe TsSchemaSpec::Generator, "across many sources" do
     end
   end
 
+  it "sees an edit to a tsconfig that the configured one extends" do
+    Dir.mktmpdir do |dir|
+      File.write("#{dir}/x1.ts", "export interface X { one: string }\n")
+      File.write("#{dir}/x2.ts", "export interface X { two: number }\n")
+      File.write("#{dir}/a.ts", "import { X } from '@x'\nexport interface A { x: X }\n")
+      File.write("#{dir}/b.ts", "import { X } from '@x'\nexport interface B { x: X }\n")
+      File.write("#{dir}/base.json", '{"compilerOptions": {"paths": {"@x": ["./x1.ts"]}}}')
+      File.write("#{dir}/tsconfig.json", '{"extends": "./base.json"}')
+      TsSchemaSpec.configure { |c| c.tsconfig = "#{dir}/tsconfig.json" }
+      described_class.generate("#{dir}/a.ts")
+
+      File.write("#{dir}/base.json", '{"compilerOptions": {"paths": {"@x": ["./x2.ts"]}}}')
+
+      expect(described_class.generate("#{dir}/b.ts").dig("definitions", "X", "properties").keys).to eq(["two"])
+    end
+  ensure
+    TsSchemaSpec.reset_config!
+  end
+
   it "uses the current directory's node_modules, not those of the directory node started in" do
     described_class.generate(fixture("roleMatrix.ts"))
 

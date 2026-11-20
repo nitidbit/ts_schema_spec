@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "tmpdir"
+
 RSpec.describe TsSchemaSpec::Generator, "across many sources" do
   around do |example|
     described_class.stop
@@ -41,6 +43,29 @@ RSpec.describe TsSchemaSpec::Generator, "across many sources" do
     waits.last.join
 
     expect(described_class.generate(fixture("roleMatrix.ts"))["definitions"]).to include("Role")
+  end
+
+  it "uses the current directory's node_modules, not those of the directory node started in" do
+    described_class.generate(fixture("roleMatrix.ts"))
+
+    Dir.mktmpdir do |dir|
+      Dir.chdir(dir) do
+        expect { described_class.generate("anything.ts") }
+          .to raise_error(TsSchemaSpec::GenerationError, /npm install --save-dev ts-json-schema-generator/)
+      end
+    end
+  end
+
+  it "sees a file created after the compiler first looked for it" do
+    Dir.mktmpdir do |dir|
+      File.write("#{dir}/a.ts", "import { Shared } from './shared'\nexport interface A { shared: Shared }\n")
+      File.write("#{dir}/b.ts", "import { Shared } from './shared'\nexport interface B { shared: Shared }\n")
+      described_class.generate("#{dir}/a.ts")
+
+      File.write("#{dir}/shared.ts", "export interface Shared { name: string }\n")
+
+      expect(described_class.generate("#{dir}/b.ts").dig("definitions", "Shared", "required")).to eq(["name"])
+    end
   end
 
   it "resolves relative paths against the current directory, not the one node started in" do

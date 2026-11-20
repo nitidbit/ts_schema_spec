@@ -10,7 +10,9 @@ module TsSchemaSpec
 
     class ServerExit < StandardError; end
 
-    Server = Struct.new(:stdin, :stdout, :stderr, :wait)
+    Server = Struct.new(:stdin, :stdout, :stderr, :wait, :cwd)
+
+    MUTEX = Mutex.new
 
     # node's phrasing when the project's node_modules lacks either package the
     # server loads. Anything looser — a bare "not found" — swallows the
@@ -40,14 +42,16 @@ module TsSchemaSpec
       end
 
       def stop
-        mutex.synchronize { stop_server }
+        MUTEX.synchronize { stop_server }
       end
 
       private
 
       def request(args)
-        mutex.synchronize do
-          stop_server unless @server&.wait&.alive?
+        MUTEX.synchronize do
+          # node resolves the generator, typescript and type roots from the
+          # directory it starts in, and TypeScript memoizes it.
+          stop_server unless @server&.wait&.alive? && @server.cwd == Dir.pwd
           @server ||= start_server
           exchange(args) || raise(ServerExit, stop_server(kill: true))
         rescue Errno::EPIPE, IOError
@@ -61,16 +65,23 @@ module TsSchemaSpec
       end
 
       def exchange(args)
-        @server.stdin.puts(JSON.generate(cwd: Dir.pwd, args: args))
+        @server.stdin.puts(JSON.generate(args))
         line = @server.stdout.gets
         JSON.parse(line) if line
       end
 
       def start_server
-        stdin, stdout, stderr, wait = Open3.popen3("node", SERVER)
-        at_exit { stop } unless @stop_registered
-        @stop_registered = true
-        Server.new(stdin, stdout, Thread.new { stderr.read }, wait)
+        cwd = Dir.pwd
+        stdin, stdout, stderr, wait = Open3.popen3("node", SERVER, chdir: cwd)
+        begin
+          at_exit { stop } unless @stop_registered
+          @stop_registered = true
+          Server.new(stdin, stdout, Thread.new { stderr.read }, wait, cwd)
+        rescue Exception
+          terminate(wait.pid)
+          [stdin, stdout, stderr].each(&:close)
+          raise
+        end
       end
 
       def stop_server(kill: false)
@@ -89,10 +100,6 @@ module TsSchemaSpec
         Process.kill("TERM", pid)
       rescue Errno::ESRCH
         nil
-      end
-
-      def mutex
-        @mutex ||= Mutex.new
       end
 
       def missing_generator(command, stderr = nil)

@@ -53,6 +53,42 @@ RSpec.describe TsSchemaSpec::Generator do
       .to raise_error(TsSchemaSpec::GenerationError, /node ended: .*SIGKILL/)
   end
 
+  it "shows what node wrote when it isn't a reply" do
+    TsSchemaSpec.configure { |c| c.generator_args = ["--version"] }
+
+    expect { described_class.generate(fixture("roleMatrix.ts")) }
+      .to raise_error(TsSchemaSpec::GenerationError, /not a reply: \d+\.\d+\.\d+/)
+  ensure
+    TsSchemaSpec.reset_config!
+  end
+
+  it "shows what node wrote when it is JSON but not a reply" do
+    allow(Open3).to receive(:popen3).and_wrap_original do |original, *args|
+      original.call(*args).tap { |io| allow(io[1]).to receive(:gets).and_return("2\n") }
+    end
+
+    expect { described_class.generate(fixture("roleMatrix.ts")) }
+      .to raise_error(TsSchemaSpec::GenerationError, /not a reply: 2$/)
+  end
+
+  it "shows what node wrote even when it isn't valid UTF-8" do
+    allow(Open3).to receive(:popen3).and_wrap_original do |original, *args|
+      original.call(*args).tap { |io| allow(io[1]).to receive(:gets).and_return((+"\xFF\n").force_encoding("UTF-8")) }
+    end
+
+    expect { described_class.generate(fixture("roleMatrix.ts")) }
+      .to raise_error(TsSchemaSpec::GenerationError, /not a reply/)
+  end
+
+  it "says when ts_schema_spec stopped node itself" do
+    allow(Open3).to receive(:popen3).and_wrap_original do |original, *args|
+      original.call(*args).tap { |io| allow(io[1]).to receive(:gets).and_return("2\n") }
+    end
+
+    expect { described_class.generate(fixture("roleMatrix.ts")) }
+      .to raise_error(TsSchemaSpec::GenerationError, /after ts_schema_spec sent it TERM/)
+  end
+
   it "still generates after a failure" do
     expect { described_class.generate(fixture("missing.ts")) }.to raise_error(TsSchemaSpec::GenerationError)
 

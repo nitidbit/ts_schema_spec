@@ -70,7 +70,14 @@ module TsSchemaSpec
       def exchange(args)
         @server.stdin.puts(JSON.generate(args))
         line = @server.stdout.gets
-        JSON.parse(line) if line
+        return unless line
+
+        reply = JSON.parse(line)
+        raise JSON::ParserError unless reply.is_a?(Hash) && reply.key?("status")
+
+        reply
+      rescue JSON::ParserError
+        raise ServerExit, "node wrote something that is not a reply: #{line.chomp}\n\n#{stop_server(kill: true)}"
       end
 
       def start_server
@@ -133,7 +140,8 @@ module TsSchemaSpec
       end
 
       def failure(command, stderr)
-        return missing_generator(command, stderr) if stderr.to_s.match?(MISSING_PACKAGE)
+        stderr = stderr.to_s.scrub
+        return missing_generator(command, stderr) if stderr.match?(MISSING_PACKAGE)
 
         <<~MSG
           ts-json-schema-generator failed.

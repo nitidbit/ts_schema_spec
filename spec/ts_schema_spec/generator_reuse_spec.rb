@@ -249,6 +249,19 @@ RSpec.describe TsSchemaSpec::Generator, "across many sources" do
     TsSchemaSpec.reset_config!
   end
 
+  it "reads node's replies as UTF-8 whatever Ruby's default encoding" do
+    default = Encoding.default_external
+    Dir.mktmpdir do |dir|
+      File.write("#{dir}/accented.ts", "export interface Accented {\n  /** café */\n  x: string\n}\n")
+      Encoding.default_external = Encoding::US_ASCII
+
+      expect(described_class.generate("#{dir}/accented.ts").dig("definitions", "Accented", "properties", "x", "description"))
+        .to eq("café")
+    end
+  ensure
+    Encoding.default_external = default
+  end
+
   it "uses the current directory's node_modules, not those of the directory node started in" do
     described_class.generate(fixture("roleMatrix.ts"))
 

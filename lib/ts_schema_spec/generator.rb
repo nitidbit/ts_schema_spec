@@ -97,6 +97,9 @@ module TsSchemaSpec
           MSG
         end
         begin
+          # node writes UTF-8 whatever Ruby's default encoding, which is
+          # US-ASCII under LANG=C.
+          [stdin, stdout].each { |io| io.set_encoding(Encoding::UTF_8) }
           at_exit { stop_at_exit } unless @stop_registered
           @stop_registered = true
           log = String.new

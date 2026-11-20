@@ -45,6 +45,21 @@ RSpec.describe TsSchemaSpec::Generator, "across many sources" do
     expect(described_class.generate(fixture("roleMatrix.ts"))["definitions"]).to include("Role")
   end
 
+  it "does not signal a node it has already reaped, whose pid may now be another process's" do
+    waits = []
+    allow(Open3).to receive(:popen3).and_wrap_original { |original, *args| original.call(*args).tap { |io| waits << io.last } }
+    allow(Process).to receive(:kill).and_call_original
+    described_class.generate(fixture("roleMatrix.ts"))
+    allow(described_class).to receive(:exchange) do
+      Process.kill("KILL", waits.last.pid)
+      waits.last.join
+      raise Timeout::Error
+    end
+
+    expect { described_class.generate(fixture("roleMatrix.ts")) }.to raise_error(Timeout::Error)
+    expect(Process).not_to have_received(:kill).with("TERM", waits.last.pid)
+  end
+
   it "uses the current directory's node_modules, not those of the directory node started in" do
     described_class.generate(fixture("roleMatrix.ts"))
 

@@ -78,7 +78,7 @@ module TsSchemaSpec
           @stop_registered = true
           Server.new(stdin, stdout, Thread.new { stderr.read }, wait, cwd)
         rescue Exception
-          terminate(wait.pid)
+          terminate(wait)
           [stdin, stdout, stderr].each(&:close)
           raise
         end
@@ -89,15 +89,17 @@ module TsSchemaSpec
         return unless server
 
         @server = nil
-        terminate(server.wait.pid) if kill
+        terminate(server.wait) if kill
         server.stdin.close unless server.stdin.closed?
         server.stdout.close unless server.stdout.closed?
         server.wait.join
         server.stderr.value
       end
 
-      def terminate(pid)
-        Process.kill("TERM", pid)
+      # Once the waiter has reaped node, its pid may belong to another process.
+      # Checking first narrows that window; only a pidfd could close it.
+      def terminate(wait, signal = "TERM")
+        Process.kill(signal, wait.pid) if wait.alive?
       rescue Errno::ESRCH
         nil
       end

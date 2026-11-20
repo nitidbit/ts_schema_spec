@@ -27,6 +27,8 @@ RSpec.describe "TsSchemaSpec.schema_for" do
 
       expect(TsSchemaSpec.schema_for("#{dir}/configured.ts", "Configured").valid?({ "x" => 1 })).to be(true)
     end
+  ensure
+    TsSchemaSpec.reset_config!
   end
 
   it "reads an edited source again once the config is set directly" do

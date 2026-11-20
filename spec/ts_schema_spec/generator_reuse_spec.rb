@@ -158,6 +158,7 @@ RSpec.describe TsSchemaSpec::Generator, "across many sources" do
 
     expect(reader.read).to start_with("stopped: ").and(satisfy { |out| !out.include?("node ended") })
   ensure
+    reader&.close
     Process.wait(child) if child
   end
 
@@ -165,13 +166,7 @@ RSpec.describe TsSchemaSpec::Generator, "across many sources" do
     Dir.mktmpdir do |dir|
       File.write("#{dir}/refers.ts", "/// <reference path=\"./missing.d.ts\" />\nexport interface Refers { x: string }\n")
 
-      outcome = begin
-        described_class.generate("#{dir}/refers.ts")
-      rescue TsSchemaSpec::GenerationError => e
-        e.message
-      end
-
-      expect(outcome.to_s).not_to include("Cannot read properties")
+      expect(described_class.generate("#{dir}/refers.ts")["definitions"]).to include("Refers")
     end
   end
 

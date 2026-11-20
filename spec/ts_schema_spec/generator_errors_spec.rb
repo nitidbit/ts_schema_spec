@@ -31,6 +31,11 @@ RSpec.describe TsSchemaSpec::Generator do
         .to raise_error(TsSchemaSpec::GenerationError, /npm install --save-dev ts-json-schema-generator/)
     end
 
+    it "says the generator could not be loaded, not that npx could not run" do
+      expect { described_class.generate("anything.ts") }
+        .to raise_error(TsSchemaSpec::GenerationError, /\Acould not load ts-json-schema-generator from your node_modules/)
+    end
+
     it "keeps node's own complaint alongside the instructions" do
       expect { described_class.generate("anything.ts") }
         .to raise_error(TsSchemaSpec::GenerationError, /Cannot find module/)

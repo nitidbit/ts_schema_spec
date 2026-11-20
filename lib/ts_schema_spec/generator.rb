@@ -141,7 +141,7 @@ module TsSchemaSpec
 
       def missing_generator(command, stderr = nil)
         message = <<~MSG
-          could not run #{COMMAND.join(" ")}.
+          could not load ts-json-schema-generator from your node_modules.
 
           The generator parses your app's TypeScript, so it resolves from your
           node_modules rather than from the gem:

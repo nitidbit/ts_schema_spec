@@ -32,7 +32,6 @@ module TsSchemaSpec
 
     def clear_cache!
       documents.clear
-      Generator.stop
     end
 
     def config

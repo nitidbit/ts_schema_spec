@@ -151,14 +151,15 @@ empty array.
 
 ## API
 
-| Call                                  | Returns                                                                             |
-| ------------------------------------- | ----------------------------------------------------------------------------------- |
-| `TsSchemaSpec.schema_for(path, type)` | a `JSONSchemer` schema scoped to that exported type                                 |
-| `match_ts_schema(path, type)`         | matcher; validates a hash, or every item of an array                                |
-| `react_component_props(name[, html])` | array of props hashes, one per mount                                                |
-| `TsSchemaSpec::Skill.check!(root)`    | raises if the installed skill is stale or missing                                   |
-| `TsSchemaSpec.configure`              | sets `tsconfig` and extra generator arguments                                       |
-| `TsSchemaSpec.clear_cache!`           | drops generated schemas and the parsed TypeScript, so edited sources are read again |
+| Call                                  | Returns                                                                                             |
+| ------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| `TsSchemaSpec.schema_for(path, type)` | a `JSONSchemer` schema scoped to that exported type                                                 |
+| `match_ts_schema(path, type)`         | matcher; validates a hash, or every item of an array                                                |
+| `react_component_props(name[, html])` | array of props hashes, one per mount                                                                |
+| `TsSchemaSpec::Skill.check!(root)`    | raises if the installed skill is stale or missing                                                   |
+| `TsSchemaSpec.configure`              | sets `tsconfig` and extra generator arguments                                                       |
+| `TsSchemaSpec.clear_cache!`           | drops generated schemas, so the next ones come from your `.ts` and tsconfig files as they now stand |
+| `TsSchemaSpec::Generator.stop`        | stops node; the next schema starts it afresh, loading upgraded packages                             |
 
 `match_ts_schema` was called `match_schema` before 0.6.1. The old name still
 works but is deprecated and will be removed.

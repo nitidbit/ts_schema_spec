@@ -46,6 +46,7 @@ RSpec.describe "TsSchemaSpec.schema_for" do
   end
 
   it "keeps node running across configure" do
+    TsSchemaSpec::Generator.stop
     allow(Open3).to receive(:popen3).and_call_original
     TsSchemaSpec.schema_for(fixture("roleMatrix.ts"), "Role")
 
@@ -55,6 +56,17 @@ RSpec.describe "TsSchemaSpec.schema_for" do
     expect(Open3).to have_received(:popen3).once
   ensure
     TsSchemaSpec.reset_config!
+  end
+
+  it "keeps node running across clear_cache!" do
+    TsSchemaSpec::Generator.stop
+    allow(Open3).to receive(:popen3).and_call_original
+    TsSchemaSpec.schema_for(fixture("roleMatrix.ts"), "Role")
+
+    TsSchemaSpec.clear_cache!
+    TsSchemaSpec.schema_for(fixture("roleMatrix.ts"), "Role")
+
+    expect(Open3).to have_received(:popen3).once
   end
 
   it "validates a payload against the named type" do

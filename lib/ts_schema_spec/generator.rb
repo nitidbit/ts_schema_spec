@@ -59,7 +59,11 @@ module TsSchemaSpec
 
       def request(request_line)
         # Outside the lock, so a deleted current directory doesn't kill node.
-        cwd = Dir.pwd
+        cwd = begin
+          Dir.pwd
+        rescue Errno::ENOENT
+          raise GenerationError, "the current directory no longer exists, so node can't resolve the generator from it."
+        end
         MUTEX.synchronize do
           # node resolves the generator, typescript and type roots from the
           # directory it starts in, and TypeScript memoizes it.

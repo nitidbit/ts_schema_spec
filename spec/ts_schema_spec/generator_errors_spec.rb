@@ -253,7 +253,8 @@ RSpec.describe TsSchemaSpec::Generator do
       dir = Dir.mktmpdir
       Dir.chdir(dir)
       Dir.rmdir(dir)
-      expect { described_class.generate("anything.ts") }.to raise_error(TsSchemaSpec::GenerationError, /getcwd/)
+      expect { described_class.generate("anything.ts") }
+        .to raise_error(TsSchemaSpec::GenerationError, /current directory no longer exists/) { |e| expect(e.message).not_to include("Rerun") }
     ensure
       Dir.chdir(home)
     end

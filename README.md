@@ -151,15 +151,15 @@ empty array.
 
 ## API
 
-| Call                                  | Returns                                                                                             |
-| ------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| `TsSchemaSpec.schema_for(path, type)` | a `JSONSchemer` schema scoped to that exported type                                                 |
-| `match_ts_schema(path, type)`         | matcher; validates a hash, or every item of an array                                                |
-| `react_component_props(name[, html])` | array of props hashes, one per mount                                                                |
-| `TsSchemaSpec::Skill.check!(root)`    | raises if the installed skill is stale or missing                                                   |
-| `TsSchemaSpec.configure`              | sets `tsconfig` and extra generator arguments                                                       |
-| `TsSchemaSpec.clear_cache!`           | drops generated schemas, so the next ones come from your `.ts` and tsconfig files as they now stand |
-| `TsSchemaSpec::Generator.stop`        | stops node; with `clear_cache!`, the next schemas start it afresh, loading upgraded packages        |
+| Call                                  | Returns                                                                                      |
+| ------------------------------------- | -------------------------------------------------------------------------------------------- |
+| `TsSchemaSpec.schema_for(path, type)` | a `JSONSchemer` schema scoped to that exported type                                          |
+| `match_ts_schema(path, type)`         | matcher; validates a hash, or every item of an array                                         |
+| `react_component_props(name[, html])` | array of props hashes, one per mount                                                         |
+| `TsSchemaSpec::Skill.check!(root)`    | raises if the installed skill is stale or missing                                            |
+| `TsSchemaSpec.configure`              | sets `tsconfig` and extra generator arguments                                                |
+| `TsSchemaSpec.clear_cache!`           | drops generated schemas, so the next ones come from your `.ts` files as they now stand       |
+| `TsSchemaSpec::Generator.stop`        | stops node; with `clear_cache!`, the next schemas start it afresh, loading upgraded packages |
 
 `match_ts_schema` was called `match_schema` before 0.6.1. The old name still
 works but is deprecated and will be removed.
@@ -259,14 +259,14 @@ or `reset_config!` is called. A changed config caches schemas of its own.
 
 ## Troubleshooting
 
-| Symptom                                        | Cause                                                          |
-| ---------------------------------------------- | -------------------------------------------------------------- |
-| `GenerationError: ... Is it exported?`         | the type has no `export`, or the name is misspelled            |
-| `GenerationError` listing a rerunnable command | run it — the generator's own stderr is in the message          |
-| passes against an obviously wrong payload      | the type is all-optional, or an unresolved import became `{}`  |
-| `could not load ts-json-schema-generator`      | the generator is not in your `node_modules`                    |
-| `disallowed additional property`               | see above — the payload sends what TypeScript does not declare |
-| `has no data-react-props attribute`            | hand-written markup, or a mount from another integration       |
+| Symptom                                                   | Cause                                                          |
+| --------------------------------------------------------- | -------------------------------------------------------------- |
+| `GenerationError: ... Is it exported?`                    | the type has no `export`, or the name is misspelled            |
+| `GenerationError` listing a rerunnable command            | run it — the generator's own stderr is in the message          |
+| passes against an obviously wrong payload                 | the type is all-optional, or an unresolved import became `{}`  |
+| `could not load ts-json-schema-generator` or `typescript` | that package is not in your `node_modules`                     |
+| `disallowed additional property`                          | see above — the payload sends what TypeScript does not declare |
+| `has no data-react-props attribute`                       | hand-written markup, or a mount from another integration       |
 
 ## What this can't catch
 

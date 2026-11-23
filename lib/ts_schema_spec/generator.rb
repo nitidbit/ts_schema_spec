@@ -65,18 +65,22 @@ module TsSchemaSpec
           raise GenerationError, "the current directory no longer exists, so node can't resolve the generator from it."
         end
         MUTEX.synchronize do
+          finished = false
           # node resolves the generator, typescript and type roots from the
           # directory it starts in, and TypeScript memoizes it.
           stop_server unless @server&.wait&.alive? && @server.cwd == cwd
           start_server(cwd) unless @server
-          exchange(request_line) || raise(ServerExit, stop_server)
+          reply = exchange(request_line)
+          finished = true
+          reply || raise(ServerExit, stop_server)
         rescue Errno::EPIPE, IOError
+          finished = true
           raise ServerExit, stop_server
-        rescue Exception
-          # Anything that interrupts an exchange (Timeout, Interrupt) leaves
-          # its reply unread, and the next request would read it as its own.
-          stop_server(kill: true)
-          raise
+        ensure
+          # Anything that cuts an exchange short (Interrupt, or Timeout, which
+          # before Ruby 3.3 throws past rescue) leaves its reply unread, and
+          # the next request would read it as its own.
+          stop_server(kill: true) unless finished
         end
       end
 
@@ -145,10 +149,12 @@ module TsSchemaSpec
             stderr.close
           end
           @server = Server.new(stdin, stdout, reader, wait, cwd, log)
-        rescue Exception
-          terminate(wait)
-          [stdin, stdout, stderr].each(&:close)
-          raise
+        ensure
+          # An ensure, not a rescue, since Timeout before Ruby 3.3 throws.
+          unless @server
+            terminate(wait)
+            [stdin, stdout, stderr].each { |io| io.close unless io.closed? }
+          end
         end
       end
 

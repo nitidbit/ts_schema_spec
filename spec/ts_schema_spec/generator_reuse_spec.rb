@@ -34,6 +34,38 @@ RSpec.describe TsSchemaSpec::Generator, "across many sources" do
     expect(described_class.generate(fixture("aliased/widget.ts"))["definitions"]).to include("AliasedWidgetProps")
   end
 
+  it "keeps replies in step after a throw cuts a request short, as Timeout does before Ruby 3.3" do
+    thrown = false
+    allow(Open3).to receive(:popen3).and_wrap_original do |original, *args|
+      original.call(*args).tap do |io|
+        allow(io[1]).to receive(:gets).and_wrap_original do |gets, *rest|
+          next gets.call(*rest) if thrown
+
+          thrown = true
+          throw :cut
+        end
+      end
+    end
+
+    catch(:cut) { described_class.generate(fixture("roleMatrix.ts")) }
+
+    expect(described_class.generate(fixture("aliased/widget.ts"))["definitions"]).to include("AliasedWidgetProps")
+  end
+
+  it "kills node when a throw cuts starting it short" do
+    waits = []
+    allow(Open3).to receive(:popen3).and_wrap_original do |original, *args|
+      original.call(*args).tap do |io|
+        waits << io.last
+        allow(io[0]).to receive(:set_encoding).and_throw(:cut)
+      end
+    end
+
+    catch(:cut) { described_class.generate(fixture("roleMatrix.ts")) }
+
+    expect(waits.last.join(2)).to be_truthy
+  end
+
   it "starts a new server when the old one has died" do
     waits = []
     allow(Open3).to receive(:popen3).and_wrap_original { |original, *args| original.call(*args).tap { |io| waits << io.last } }

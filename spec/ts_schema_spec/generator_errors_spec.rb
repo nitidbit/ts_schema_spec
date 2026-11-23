@@ -1,34 +1,270 @@
 # frozen_string_literal: true
 
+require "tmpdir"
+
 RSpec.describe TsSchemaSpec::Generator do
-  it "explains how to install the generator when npx is not on PATH" do
-    allow(Open3).to receive(:capture3).and_raise(Errno::ENOENT, "npx")
-
-    expect { described_class.generate("anything.ts") }
-      .to raise_error(TsSchemaSpec::GenerationError, /npm install --save-dev ts-json-schema-generator/)
+  around do |example|
+    described_class.stop
+    example.run
+    described_class.stop
   end
 
-  it "explains the same when npx cannot find the package" do
-    allow(Open3).to receive(:capture3)
-      .and_return(["", "npm error npx canceled due to missing packages", instance_double(Process::Status, success?: false)])
+  it "says node is missing, rather than the generator, when node is not on PATH" do
+    allow(Open3).to receive(:popen3).and_raise(Errno::ENOENT, "node")
 
     expect { described_class.generate("anything.ts") }
-      .to raise_error(TsSchemaSpec::GenerationError, /npm install --save-dev ts-json-schema-generator/)
+      .to raise_error(TsSchemaSpec::GenerationError, /could not run node.*PATH/m) { |e| expect(e.message).not_to include("npm install") }
   end
 
-  it "keeps the generator's own stderr when it merely mentions something not found" do
-    allow(Open3).to receive(:capture3)
-      .and_return(["", "error TS2307: Cannot find module '@/roles'. File not found.", instance_double(Process::Status, success?: false)])
+  it "reports an error that isn't about node itself as it is, with the command that reproduces it" do
+    allow(Open3).to receive(:popen3).and_raise(Errno::ENOENT, "/gone")
 
     expect { described_class.generate("anything.ts") }
-      .to raise_error(TsSchemaSpec::GenerationError, /Cannot find module/)
+      .to raise_error(TsSchemaSpec::GenerationError, %r{/gone}) { |e| expect(e.message).to include("Rerun:").and(satisfy { |m| !m.include?("PATH") }) }
   end
 
-  it "keeps the stderr alongside the install instructions when the package is missing" do
-    allow(Open3).to receive(:capture3)
-      .and_return(["", "npm error npx canceled due to missing packages", instance_double(Process::Status, success?: false)])
+  context "in a project without the generator in its node_modules" do
+    around { |example| Dir.mktmpdir { |dir| Dir.chdir(dir) { example.run } } }
+
+    it "explains how to install it" do
+      expect { described_class.generate("anything.ts") }
+        .to raise_error(TsSchemaSpec::GenerationError, /npm install --save-dev ts-json-schema-generator/)
+    end
+
+    it "says the generator could not be loaded, not that npx could not run" do
+      expect { described_class.generate("anything.ts") }
+        .to raise_error(TsSchemaSpec::GenerationError, /\Acould not load ts-json-schema-generator from your node_modules/)
+    end
+
+    it "keeps node's own complaint alongside the instructions" do
+      expect { described_class.generate("anything.ts") }
+        .to raise_error(TsSchemaSpec::GenerationError, /Cannot find module/)
+    end
+  end
+
+  context "in a project with a generator older than 2.4" do
+    around do |example|
+      Dir.mktmpdir do |dir|
+        FileUtils.mkdir_p("#{dir}/node_modules/ts-json-schema-generator/dist")
+        File.write("#{dir}/node_modules/ts-json-schema-generator/package.json", '{"version": "2.3.0"}')
+        File.write("#{dir}/node_modules/ts-json-schema-generator/dist/ts-json-schema-generator.js", "")
+        Dir.chdir(dir) { example.run }
+      end
+    end
+
+    it "names the versions it supports" do
+      expect { described_class.generate("anything.ts") }
+        .to raise_error(TsSchemaSpec::GenerationError, /\Ats_schema_spec supports .*2\.4 or later.*2\.3\.0/m) { |e| expect(e.message).not_to include("Rerun") }
+    end
+  end
+
+  it "keeps the whole failure when the version requirement is only quoted in it" do
+    allow(described_class).to receive(:request).and_return(
+      "status" => 1, "stdout" => "",
+      "stderr" => "wrapped: ts_schema_spec supports ts-json-schema-generator 2.4 or later 2.x\nmore detail"
+    )
 
     expect { described_class.generate("anything.ts") }
-      .to raise_error(TsSchemaSpec::GenerationError, /npx canceled/)
+      .to raise_error(TsSchemaSpec::GenerationError, /Rerun:.*more detail/m)
+  end
+
+  it "keeps the generator's own stderr when it fails" do
+    expect { described_class.generate(fixture("missing.ts")) }
+      .to raise_error(TsSchemaSpec::GenerationError, /No input files/)
+  end
+
+  it "keeps the generator's own stderr when a module it can't find merely starts like a package it needs" do
+    allow(described_class).to receive(:request)
+      .and_return("status" => 1, "stdout" => "", "stderr" => "Error: Cannot find module 'typescript-plugin-x'")
+
+    expect { described_class.generate("anything.ts") }
+      .to raise_error(TsSchemaSpec::GenerationError, /typescript-plugin-x/) { |e| expect(e.message).not_to include("npm install") }
+  end
+
+  it "keeps TypeScript's own complaint about a module it can't resolve" do
+    allow(described_class).to receive(:request).and_return(
+      "status" => 1, "stdout" => "",
+      "stderr" => "error TS2307: Cannot find module 'typescript' or its corresponding type declarations."
+    )
+
+    expect { described_class.generate("anything.ts") }
+      .to raise_error(TsSchemaSpec::GenerationError, /TS2307/) { |e| expect(e.message).not_to include("npm install") }
+  end
+
+  it "leaves out the stack trace the CLI writes to stdout" do
+    expect { described_class.generate(fixture("missing.ts")) }
+      .to raise_error(TsSchemaSpec::GenerationError) { |e| expect(e.message).not_to match(/^\s+at /) }
+  end
+
+  it "names typescript when it is typescript that can't be loaded" do
+    allow(described_class).to receive(:request)
+      .and_return("status" => 1, "stdout" => "", "stderr" => "Error: Cannot find module 'typescript'")
+
+    expect { described_class.generate("anything.ts") }
+      .to raise_error(TsSchemaSpec::GenerationError, /\Acould not load typescript .*npm install --save-dev typescript$/m)
+  end
+
+  it "names a command that reproduces the failure" do
+    expect { described_class.generate(fixture("missing.ts")) }
+      .to raise_error(TsSchemaSpec::GenerationError, /Rerun: npx ts-json-schema-generator --path \S+missing\.ts/)
+  end
+
+  it "says how node ended when it dies without a word on stderr" do
+    waits = []
+    allow(Open3).to receive(:popen3).and_wrap_original { |original, *args| original.call(*args).tap { |io| waits << io.last } }
+    allow(described_class).to receive(:exchange).and_wrap_original do |original, *args|
+      Process.kill("KILL", waits.last.pid)
+      waits.last.join
+      original.call(*args)
+    end
+
+    expect { described_class.generate(fixture("roleMatrix.ts")) }
+      .to raise_error(TsSchemaSpec::GenerationError, /node ended: .*SIGKILL/)
+  end
+
+  it "shows what the CLI wrote when it ends node" do
+    TsSchemaSpec.configure { |c| c.generator_args = ["--version"] }
+
+    expect { described_class.generate(fixture("roleMatrix.ts")) }
+      .to raise_error(TsSchemaSpec::GenerationError, /^\d+\.\d+\.\d+$.*node ended: .*exit 0/m)
+  ensure
+    TsSchemaSpec.reset_config!
+  end
+
+  it "shows what node wrote when it is JSON but not a reply" do
+    allow(Open3).to receive(:popen3).and_wrap_original do |original, *args|
+      original.call(*args).tap { |io| allow(io[1]).to receive(:gets).and_return("2\n") }
+    end
+
+    expect { described_class.generate(fixture("roleMatrix.ts")) }
+      .to raise_error(TsSchemaSpec::GenerationError, /not a reply: 2$/)
+  end
+
+  it "shows what node wrote even when it isn't valid UTF-8" do
+    allow(Open3).to receive(:popen3).and_wrap_original do |original, *args|
+      original.call(*args).tap { |io| allow(io[1]).to receive(:gets).and_return((+"\xFF\n").force_encoding("UTF-8")) }
+    end
+
+    expect { described_class.generate(fixture("roleMatrix.ts")) }
+      .to raise_error(TsSchemaSpec::GenerationError, /not a reply/)
+  end
+
+  it "says when ts_schema_spec stopped node itself" do
+    allow(Open3).to receive(:popen3).and_wrap_original do |original, *args|
+      original.call(*args).tap { |io| allow(io[1]).to receive(:gets).and_return("2\n") }
+    end
+
+    expect { described_class.generate(fixture("roleMatrix.ts")) }
+      .to raise_error(TsSchemaSpec::GenerationError, /after ts_schema_spec sent it TERM/)
+  end
+
+  it "lets node exit by itself once its stdout ends, without a signal" do
+    allow(Process).to receive(:kill).and_call_original
+    allow(Open3).to receive(:popen3).and_wrap_original do |original, *args|
+      original.call(*args).tap { |io| allow(io[1]).to receive(:gets).and_return(nil) }
+    end
+
+    expect { described_class.generate(fixture("roleMatrix.ts")) }
+      .to raise_error(TsSchemaSpec::GenerationError) { |e| expect(e.message).not_to include("sent it") }
+    expect(Process).not_to have_received(:kill)
+  end
+
+  it "reports only what node wrote to stderr during the failing request" do
+    ios = []
+    allow(Open3).to receive(:popen3).and_wrap_original do |original, *args|
+      stdin, stdout, stderr, wait = original.call(*args)
+      reader, writer = IO.pipe
+      ios.push(stdout, stderr, writer)
+      [stdin, stdout, reader, wait]
+    end
+    described_class.generate(fixture("roleMatrix.ts"))
+    stdout, real_stderr, writer = ios
+    writer.write("an earlier warning\n\0")
+    writer.close
+    described_class.instance_variable_get(:@server).stderr_reader.join(2)
+    allow(stdout).to receive(:gets).and_return(nil)
+
+    expect { described_class.generate(fixture("roleMatrix.ts")) }
+      .to raise_error(TsSchemaSpec::GenerationError) { |e| expect(e.message).not_to include("an earlier warning") }
+  ensure
+    real_stderr&.close
+  end
+
+  it "reports what node wrote to stderr after its last reply, such as a crash" do
+    ios = []
+    allow(Open3).to receive(:popen3).and_wrap_original do |original, *args|
+      stdin, stdout, stderr, wait = original.call(*args)
+      reader, writer = IO.pipe
+      ios.push(stdout, stderr, writer)
+      [stdin, stdout, reader, wait]
+    end
+    described_class.generate(fixture("roleMatrix.ts"))
+    stdout, real_stderr, writer = ios
+    writer.write("an earlier warning\n\0a crash between requests\n")
+    writer.close
+    described_class.instance_variable_get(:@server).stderr_reader.join(2)
+    allow(stdout).to receive(:gets).and_return(nil)
+
+    expect { described_class.generate(fixture("roleMatrix.ts")) }
+      .to raise_error(TsSchemaSpec::GenerationError, /a crash between requests/) { |e| expect(e.message).not_to include("an earlier warning") }
+  ensure
+    real_stderr&.close
+  end
+
+  it "reports an argument that isn't valid UTF-8 without stopping node" do
+    allow(Open3).to receive(:popen3).and_call_original
+    described_class.generate(fixture("roleMatrix.ts"))
+
+    expect { described_class.generate((+"/tmp/\xFF.ts").force_encoding(Encoding::UTF_8)) }
+      .to raise_error(TsSchemaSpec::GenerationError, /UTF-8/)
+    described_class.generate(fixture("roleMatrix.ts"))
+    expect(Open3).to have_received(:popen3).once
+  end
+
+  it "reports node's own error for a path given as binary" do
+    allow(described_class).to receive(:request)
+      .and_return("status" => 1, "stdout" => "", "stderr" => "error in café.ts")
+
+    expect { described_class.generate("/proj/café.ts".b) }
+      .to raise_error(TsSchemaSpec::GenerationError, /Rerun: .*café\.ts.*error in café\.ts/m)
+  end
+
+  it "keeps node running when TypeScript writes to stdout itself" do
+    allow(Open3).to receive(:popen3).and_call_original
+    Dir.mktmpdir do |dir|
+      File.write("#{dir}/tsconfig.json", '{"compilerOptions": {"traceResolution": true}}')
+      TsSchemaSpec.configure { |c| c.tsconfig = "#{dir}/tsconfig.json" }
+
+      expect { described_class.generate(fixture("roleMatrix.ts")) }.to raise_error(TsSchemaSpec::GenerationError)
+    end
+    TsSchemaSpec.reset_config!
+    described_class.generate(fixture("roleMatrix.ts"))
+    expect(Open3).to have_received(:popen3).once
+  ensure
+    TsSchemaSpec.reset_config!
+  end
+
+  it "keeps node running when the current directory is gone" do
+    allow(Open3).to receive(:popen3).and_call_original
+    described_class.generate(fixture("roleMatrix.ts"))
+    home = Dir.pwd
+
+    begin
+      dir = Dir.mktmpdir
+      Dir.chdir(dir)
+      Dir.rmdir(dir)
+      expect { described_class.generate("anything.ts") }
+        .to raise_error(TsSchemaSpec::GenerationError, /current directory no longer exists/) { |e| expect(e.message).not_to include("Rerun") }
+    ensure
+      Dir.chdir(home)
+    end
+    described_class.generate(fixture("roleMatrix.ts"))
+    expect(Open3).to have_received(:popen3).once
+  end
+
+  it "still generates after a failure" do
+    expect { described_class.generate(fixture("missing.ts")) }.to raise_error(TsSchemaSpec::GenerationError)
+
+    expect(described_class.generate(fixture("roleMatrix.ts"))["definitions"]).to include("Role")
   end
 end

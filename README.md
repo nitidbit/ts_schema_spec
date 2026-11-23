@@ -26,6 +26,9 @@ This gem requires ts-json-schema-generator, resolved from your project's
 npm install --save-dev ts-json-schema-generator
 ```
 
+It supports ts-json-schema-generator 2.4 or later 2.x, and runs it with `node`,
+which must be on the `PATH` of the process running your specs.
+
 Add the following to your test suite:
 
 ```ruby
@@ -148,14 +151,15 @@ empty array.
 
 ## API
 
-| Call                                  | Returns                                              |
-| ------------------------------------- | ---------------------------------------------------- |
-| `TsSchemaSpec.schema_for(path, type)` | a `JSONSchemer` schema scoped to that exported type  |
-| `match_ts_schema(path, type)`         | matcher; validates a hash, or every item of an array |
-| `react_component_props(name[, html])` | array of props hashes, one per mount                 |
-| `TsSchemaSpec::Skill.check!(root)`    | raises if the installed skill is stale or missing    |
-| `TsSchemaSpec.configure`              | sets `tsconfig` and extra generator arguments        |
-| `TsSchemaSpec.clear_cache!`           | drops the generated-schema cache                     |
+| Call                                  | Returns                                                                                      |
+| ------------------------------------- | -------------------------------------------------------------------------------------------- |
+| `TsSchemaSpec.schema_for(path, type)` | a `JSONSchemer` schema scoped to that exported type                                          |
+| `match_ts_schema(path, type)`         | matcher; validates a hash, or every item of an array                                         |
+| `react_component_props(name[, html])` | array of props hashes, one per mount                                                         |
+| `TsSchemaSpec::Skill.check!(root)`    | raises if the installed skill is stale or missing                                            |
+| `TsSchemaSpec.configure`              | sets `tsconfig` and extra generator arguments                                                |
+| `TsSchemaSpec.clear_cache!`           | drops generated schemas, so the next ones come from your `.ts` files as they now stand       |
+| `TsSchemaSpec::Generator.stop`        | stops node; with `clear_cache!`, the next schemas start it afresh, loading upgraded packages |
 
 `match_ts_schema` was called `match_schema` before 0.6.1. The old name still
 works but is deprecated and will be removed.
@@ -237,23 +241,32 @@ timestamps the React side ignores. Fix by declaring the field or narrowing the
 
 ## Cost
 
-One `npx ts-json-schema-generator` run per source file. Generated schemas are
-cached in memory, keyed by the file and the generator arguments, so reading
-three types out of one `.ts` costs one run rather than three, and changing
-`TsSchemaSpec.configure` regenerates rather than serving a stale schema.
+The first schema of a test run costs a few seconds; later source files cost
+tens of milliseconds. The gem starts one `node` process per test process and
+runs the generator's own CLI inside it for each source file, so the work every
+run repeats — parsing `tsconfig.json` (which globs the whole project) and the
+lib and `node_modules` declarations — happens once.
 
-The cache lives in the process, so parallel test workers each pay for it once.
+Generated schemas are cached in memory, keyed by the file and the generator
+arguments, so reading three types out of one `.ts` costs one run rather than
+three, and changing `TsSchemaSpec.configure` regenerates rather than serving a
+stale schema.
+
+Both caches live in the process, so parallel test workers each pay for them
+once. node parses your own `.ts` files afresh for each run, but a schema
+already generated stays cached until `TsSchemaSpec.clear_cache!`, `configure`
+or `reset_config!` is called. A changed config caches schemas of its own.
 
 ## Troubleshooting
 
-| Symptom                                        | Cause                                                          |
-| ---------------------------------------------- | -------------------------------------------------------------- |
-| `GenerationError: ... Is it exported?`         | the type has no `export`, or the name is misspelled            |
-| `GenerationError` listing a rerunnable command | run it — the generator's own stderr is in the message          |
-| passes against an obviously wrong payload      | the type is all-optional, or an unresolved import became `{}`  |
-| `could not run npx ts-json-schema-generator`   | the generator is not in your `node_modules`                    |
-| `disallowed additional property`               | see above — the payload sends what TypeScript does not declare |
-| `has no data-react-props attribute`            | hand-written markup, or a mount from another integration       |
+| Symptom                                                   | Cause                                                          |
+| --------------------------------------------------------- | -------------------------------------------------------------- |
+| `GenerationError: ... Is it exported?`                    | the type has no `export`, or the name is misspelled            |
+| `GenerationError` listing a rerunnable command            | run it — the generator's own stderr is in the message          |
+| passes against an obviously wrong payload                 | the type is all-optional, or an unresolved import became `{}`  |
+| `could not load ts-json-schema-generator` or `typescript` | that package is not in your `node_modules`                     |
+| `disallowed additional property`                          | see above — the payload sends what TypeScript does not declare |
+| `has no data-react-props attribute`                       | hand-written markup, or a mount from another integration       |
 
 ## What this can't catch
 

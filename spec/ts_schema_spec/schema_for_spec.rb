@@ -1,7 +1,73 @@
 # frozen_string_literal: true
 
+require "tmpdir"
+
 RSpec.describe "TsSchemaSpec.schema_for" do
   before { TsSchemaSpec.clear_cache! }
+
+  it "reads an edited source again after clear_cache!" do
+    Dir.mktmpdir do |dir|
+      File.write("#{dir}/edited.ts", "export interface Edited { x: string }\n")
+      TsSchemaSpec.schema_for("#{dir}/edited.ts", "Edited")
+
+      File.write("#{dir}/edited.ts", "export interface Edited { x: number }\n")
+      TsSchemaSpec.clear_cache!
+
+      expect(TsSchemaSpec.schema_for("#{dir}/edited.ts", "Edited").valid?({ "x" => 1 })).to be(true)
+    end
+  end
+
+  it "reads an edited source again after configure" do
+    Dir.mktmpdir do |dir|
+      File.write("#{dir}/configured.ts", "export interface Configured { x: string }\n")
+      TsSchemaSpec.schema_for("#{dir}/configured.ts", "Configured")
+
+      File.write("#{dir}/configured.ts", "export interface Configured { x: number }\n")
+      TsSchemaSpec.configure { |c| c.generator_args = [] }
+
+      expect(TsSchemaSpec.schema_for("#{dir}/configured.ts", "Configured").valid?({ "x" => 1 })).to be(true)
+    end
+  ensure
+    TsSchemaSpec.reset_config!
+  end
+
+  it "reads an edited source again once the config is set directly" do
+    Dir.mktmpdir do |dir|
+      File.write("#{dir}/direct.ts", "export interface Direct { x: string }\n")
+      TsSchemaSpec.schema_for("#{dir}/direct.ts", "Direct")
+
+      File.write("#{dir}/direct.ts", "export interface Direct { x: number }\n")
+      TsSchemaSpec.config.generator_args = ["--strict-tuples"]
+
+      expect(TsSchemaSpec.schema_for("#{dir}/direct.ts", "Direct").valid?({ "x" => 1 })).to be(true)
+    end
+  ensure
+    TsSchemaSpec.reset_config!
+  end
+
+  it "keeps node running across configure" do
+    TsSchemaSpec::Generator.stop
+    allow(Open3).to receive(:popen3).and_call_original
+    TsSchemaSpec.schema_for(fixture("roleMatrix.ts"), "Role")
+
+    TsSchemaSpec.configure { |c| c.generator_args = ["--strict-tuples"] }
+    TsSchemaSpec.schema_for(fixture("roleMatrix.ts"), "Role")
+
+    expect(Open3).to have_received(:popen3).once
+  ensure
+    TsSchemaSpec.reset_config!
+  end
+
+  it "keeps node running across clear_cache!" do
+    TsSchemaSpec::Generator.stop
+    allow(Open3).to receive(:popen3).and_call_original
+    TsSchemaSpec.schema_for(fixture("roleMatrix.ts"), "Role")
+
+    TsSchemaSpec.clear_cache!
+    TsSchemaSpec.schema_for(fixture("roleMatrix.ts"), "Role")
+
+    expect(Open3).to have_received(:popen3).once
+  end
 
   it "validates a payload against the named type" do
     schema = TsSchemaSpec.schema_for(fixture("roleMatrix.ts"), "RoleMatrixProps")

@@ -122,11 +122,11 @@ RSpec.describe TsSchemaSpec::Generator do
       .to raise_error(TsSchemaSpec::GenerationError, /node ended: .*SIGKILL/)
   end
 
-  it "shows what node wrote when it isn't a reply" do
+  it "shows what the CLI wrote when it ends node" do
     TsSchemaSpec.configure { |c| c.generator_args = ["--version"] }
 
     expect { described_class.generate(fixture("roleMatrix.ts")) }
-      .to raise_error(TsSchemaSpec::GenerationError, /not a reply: \d+\.\d+\.\d+/)
+      .to raise_error(TsSchemaSpec::GenerationError, /^\d+\.\d+\.\d+$.*node ended: .*exit 0/m)
   ensure
     TsSchemaSpec.reset_config!
   end
@@ -227,6 +227,21 @@ RSpec.describe TsSchemaSpec::Generator do
 
     expect { described_class.generate("/proj/café.ts".b) }
       .to raise_error(TsSchemaSpec::GenerationError, /Rerun: .*café\.ts.*error in café\.ts/m)
+  end
+
+  it "keeps node running when TypeScript writes to stdout itself" do
+    allow(Open3).to receive(:popen3).and_call_original
+    Dir.mktmpdir do |dir|
+      File.write("#{dir}/tsconfig.json", '{"compilerOptions": {"traceResolution": true}}')
+      TsSchemaSpec.configure { |c| c.tsconfig = "#{dir}/tsconfig.json" }
+
+      expect { described_class.generate(fixture("roleMatrix.ts")) }.to raise_error(TsSchemaSpec::GenerationError)
+    end
+    TsSchemaSpec.reset_config!
+    described_class.generate(fixture("roleMatrix.ts"))
+    expect(Open3).to have_received(:popen3).once
+  ensure
+    TsSchemaSpec.reset_config!
   end
 
   it "keeps node running when the current directory is gone" do

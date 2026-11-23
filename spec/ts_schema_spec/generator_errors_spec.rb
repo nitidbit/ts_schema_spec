@@ -229,6 +229,23 @@ RSpec.describe TsSchemaSpec::Generator do
       .to raise_error(TsSchemaSpec::GenerationError, /Rerun: .*café\.ts.*error in café\.ts/m)
   end
 
+  it "keeps node running when the current directory is gone" do
+    allow(Open3).to receive(:popen3).and_call_original
+    described_class.generate(fixture("roleMatrix.ts"))
+    home = Dir.pwd
+
+    begin
+      dir = Dir.mktmpdir
+      Dir.chdir(dir)
+      Dir.rmdir(dir)
+      expect { described_class.generate("anything.ts") }.to raise_error(TsSchemaSpec::GenerationError, /getcwd/)
+    ensure
+      Dir.chdir(home)
+    end
+    described_class.generate(fixture("roleMatrix.ts"))
+    expect(Open3).to have_received(:popen3).once
+  end
+
   it "still generates after a failure" do
     expect { described_class.generate(fixture("missing.ts")) }.to raise_error(TsSchemaSpec::GenerationError)
 

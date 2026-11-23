@@ -58,11 +58,13 @@ module TsSchemaSpec
       private
 
       def request(request_line)
+        # Outside the lock, so a deleted current directory doesn't kill node.
+        cwd = Dir.pwd
         MUTEX.synchronize do
           # node resolves the generator, typescript and type roots from the
           # directory it starts in, and TypeScript memoizes it.
-          stop_server unless @server&.wait&.alive? && @server.cwd == Dir.pwd
-          start_server unless @server
+          stop_server unless @server&.wait&.alive? && @server.cwd == cwd
+          start_server(cwd) unless @server
           exchange(request_line) || raise(ServerExit, stop_server)
         rescue Errno::EPIPE, IOError
           raise ServerExit, stop_server
@@ -74,8 +76,6 @@ module TsSchemaSpec
         end
       end
 
-      # node's readline also ends a line at U+2028 and U+2029, which JSON
-      # leaves unescaped.
       def to_utf8(arg)
         arg = arg.to_s
         # Binary and US-ASCII label bytes without saying what they encode.
@@ -90,6 +90,8 @@ module TsSchemaSpec
         arg.to_s.dup.force_encoding(Encoding::UTF_8).scrub
       end
 
+      # node's readline also ends a line at U+2028 and U+2029, which JSON
+      # leaves unescaped.
       def encode(args)
         JSON.generate(args).gsub("\u2028", "\\u2028").gsub("\u2029", "\\u2029")
       end
@@ -107,8 +109,7 @@ module TsSchemaSpec
         raise ServerExit, "node wrote something that is not a reply: #{line.chomp}\n\n#{stop_server(kill: true)}"
       end
 
-      def start_server
-        cwd = Dir.pwd
+      def start_server(cwd)
         stdin, stdout, stderr, wait = begin
           Open3.popen3("node", SERVER, chdir: cwd)
         rescue Errno::ENOENT => e

@@ -298,6 +298,31 @@ RSpec.describe TsSchemaSpec::Generator, "across many sources" do
     end
   end
 
+  it "sees an edit to a doc comment that an unedited file inherits" do
+    Dir.mktmpdir do |dir|
+      File.write("#{dir}/base.ts", "export interface Base {\n  /** Old */\n  name: string\n}\n")
+      File.write("#{dir}/a.ts", "import { Base } from './base'\nexport interface A extends Base {\n  name: string\n}\n")
+      described_class.generate("#{dir}/a.ts")
+
+      File.write("#{dir}/base.ts", "export interface Base {\n  /** New */\n  name: string\n}\n")
+
+      expect(described_class.generate("#{dir}/a.ts").dig("definitions", "A", "properties", "name", "description")).to eq("New")
+    end
+  end
+
+  it "sees an edit to a doc comment that an unedited package file inherits" do
+    Dir.mktmpdir do |dir|
+      FileUtils.mkdir_p("#{dir}/node_modules/pkg")
+      File.write("#{dir}/node_modules/pkg/base.ts", "export interface Base {\n  /** Old */\n  name: string\n}\n")
+      File.write("#{dir}/node_modules/pkg/a.ts", "import { Base } from './base'\nexport interface A extends Base {\n  name: string\n}\n")
+      described_class.generate("#{dir}/node_modules/pkg/a.ts")
+
+      File.write("#{dir}/node_modules/pkg/base.ts", "export interface Base {\n  /** New */\n  name: string\n}\n")
+
+      expect(described_class.generate("#{dir}/node_modules/pkg/a.ts").dig("definitions", "A", "properties", "name", "description")).to eq("New")
+    end
+  end
+
   it "uses the current directory's node_modules, not those of the directory node started in" do
     described_class.generate(fixture("roleMatrix.ts"))
 
